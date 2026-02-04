@@ -2,20 +2,22 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and Python packages
+# gcc is needed for compiling bcrypt/cryptography wheels
+COPY requirements.txt .
 RUN apt-get update && apt-get install -y \
     gcc \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apt-get purge -y gcc \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/
 COPY templates/ ./templates/
-COPY email_templates/ ./email_templates/
-COPY data/ ./data/
+
+# Create directories for runtime data (mounted as volumes)
+RUN mkdir -p /app/email_templates /app/data
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app

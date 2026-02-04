@@ -151,12 +151,12 @@ def create_app() -> FastAPI:
                 "link_text": "Configure SMTP"
             })
         
-        # Check BASE_URL for password reset emails
-        if settings.BASE_URL == "http://localhost:8000":
+        # Check if BASE_URL contains localhost (password reset links may not work)
+        if 'localhost' in settings.BASE_URL.lower():
             alerts.append({
                 "level": "info",
-                "title": "Default BASE_URL",
-                "message": f"Using default BASE_URL '{settings.BASE_URL}'. Update for production.",
+                "title": "Localhost BASE_URL",
+                "message": f"BASE_URL contains 'localhost' ({settings.BASE_URL}). Password reset emails may not work correctly from external networks.",
                 "link": None,
                 "link_text": None
             })
@@ -208,18 +208,19 @@ def create_app() -> FastAPI:
             })
         
         # Check for default admin credentials (security warning)
-        # Check if admin user still has default password by verifying against 'admin'
-        from app.store import get_user_by_username
+        # Check if any master_admin user still has default password 'admin'
         import bcrypt
-        admin_user = get_user_by_username(settings.ADMIN_USERNAME)
-        if admin_user and bcrypt.checkpw('admin'.encode(), admin_user['password_hash'].encode()):
-            alerts.append({
-                "level": "danger",
-                "title": "Default Admin Password",
-                "message": "Using default admin password 'admin'. Change immediately for security.",
-                "link": "/profile",
-                "link_text": "Change Password"
-            })
+        master_admins = [u for u in users if u.get('role') == 'master_admin']
+        for admin_user in master_admins:
+            if bcrypt.checkpw('admin'.encode(), admin_user['password_hash'].encode()):
+                alerts.append({
+                    "level": "danger",
+                    "title": "Default Admin Password",
+                    "message": f"User '{admin_user.get('username')}' is using default password 'admin'. Change immediately for security.",
+                    "link": "/profile",
+                    "link_text": "Change Password"
+                })
+                break  # Only show one alert
         
         return alerts
     

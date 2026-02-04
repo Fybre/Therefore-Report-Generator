@@ -33,12 +33,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     SECRET_KEY: str = "change-me-in-production"
     
-    # Admin user (legacy - now set via setup wizard)
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "admin"
-    ADMIN_EMAIL: str = "admin@example.com"
-    
-    # Application URL (legacy - now set via setup wizard)
+    # Application URL (overridden by app_config.yaml if it exists)
     BASE_URL: str = "http://localhost:8000"
     
     # Scheduler

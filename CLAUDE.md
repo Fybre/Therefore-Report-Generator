@@ -90,5 +90,4 @@ Custom filters: `format_date`, `format_datetime`
 
 Environment variables (via `.env` or docker-compose):
 - `SECRET_KEY` - JWT signing key
-- `ADMIN_USERNAME` / `ADMIN_PASSWORD` - Initial admin credentials
 - `SCHEDULER_INTERVAL_SECONDS` - How often to check for due reports (default: 60)

@@ -171,29 +171,3 @@ def is_tenant_admin(user: dict, tenant_id: int) -> bool:
 async def authenticate_user(email: str, password: str) -> Optional[dict]:
     """Authenticate a user by email."""
     return verify_password(email, password)
-
-
-async def create_admin_user():
-    """Create the initial admin user if no users exist."""
-    from app.store import get_users, save_yaml, USERS_FILE
-    
-    users = get_users()
-    if users:
-        return
-    
-    settings = get_settings()
-    
-    admin = {
-        'id': 1,
-        'username': settings.ADMIN_USERNAME,
-        'email': settings.ADMIN_EMAIL,
-        'password_hash': bcrypt.hashpw(settings.ADMIN_PASSWORD.encode(), bcrypt.gensalt()).decode(),
-        'role': 'master_admin',
-        'is_active': True,
-        'created_at': datetime.utcnow().isoformat(),
-        'updated_at': datetime.utcnow().isoformat(),
-        'tenants': []
-    }
-    
-    save_yaml(USERS_FILE, [admin])
-    print(f"Created admin user: {settings.ADMIN_USERNAME}")
