@@ -148,61 +148,6 @@ async def edit_template_page(
     })
 
 
-@router.post("", response_class=HTMLResponse)
-async def create_template_form(
-    request: Request,
-    current_user: dict = Depends(require_master_admin),
-):
-    """Create template from form."""
-    form = await request.form()
-    
-    create_template(
-        name=form.get("name"),
-        description=form.get("description"),
-        subject_template=form.get("subject_template"),
-        body_template=form.get("body_template"),
-        is_default=form.get("is_default") == "on",
-        created_by=current_user['id']
-    )
-    
-    return RedirectResponse(url="/templates", status_code=302)
-
-
-@router.post("/{template_id}", response_class=HTMLResponse)
-async def update_template_form(
-    template_id: int,
-    request: Request,
-    current_user: dict = Depends(require_master_admin),
-):
-    """Update template from form."""
-    template = get_template_by_id(template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
-    
-    form = await request.form()
-    
-    updates = {
-        'name': form.get("name"),
-        'description': form.get("description"),
-        'subject_template': form.get("subject_template"),
-        'body_template': form.get("body_template"),
-        'is_default': form.get("is_default") == "on"
-    }
-    
-    update_template(template_id, updates)
-    return RedirectResponse(url="/templates", status_code=302)
-
-
-@router.post("/{template_id}/delete", response_class=HTMLResponse)
-async def delete_template_form(
-    template_id: int,
-    current_user: dict = Depends(require_master_admin),
-):
-    """Delete template from form."""
-    delete_template(template_id)
-    return RedirectResponse(url="/templates", status_code=302)
-
-
 @router.post("/init-defaults")
 async def init_default_templates(
     current_user: dict = Depends(require_master_admin),
@@ -299,3 +244,58 @@ async def reset_default_templates(
         url=f"/templates?message=Templates+reset:+{len(existing)}+deleted,+{created_count}+created",
         status_code=302
     )
+
+
+@router.post("", response_class=HTMLResponse)
+async def create_template_form(
+    request: Request,
+    current_user: dict = Depends(require_master_admin),
+):
+    """Create template from form."""
+    form = await request.form()
+    
+    create_template(
+        name=form.get("name"),
+        description=form.get("description"),
+        subject_template=form.get("subject_template"),
+        body_template=form.get("body_template"),
+        is_default=form.get("is_default") == "on",
+        created_by=current_user['id']
+    )
+    
+    return RedirectResponse(url="/templates", status_code=302)
+
+
+@router.post("/{template_id}", response_class=HTMLResponse)
+async def update_template_form(
+    template_id: int,
+    request: Request,
+    current_user: dict = Depends(require_master_admin),
+):
+    """Update template from form."""
+    template = get_template_by_id(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    form = await request.form()
+    
+    updates = {
+        'name': form.get("name"),
+        'description': form.get("description"),
+        'subject_template': form.get("subject_template"),
+        'body_template': form.get("body_template"),
+        'is_default': form.get("is_default") == "on"
+    }
+    
+    update_template(template_id, updates)
+    return RedirectResponse(url="/templates", status_code=302)
+
+
+@router.post("/{template_id}/delete", response_class=HTMLResponse)
+async def delete_template_form(
+    template_id: int,
+    current_user: dict = Depends(require_master_admin),
+):
+    """Delete template from form."""
+    delete_template(template_id)
+    return RedirectResponse(url="/templates", status_code=302)
