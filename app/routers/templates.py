@@ -152,11 +152,12 @@ async def edit_template_page(
 async def init_default_templates(
     current_user: dict = Depends(require_master_admin),
 ):
-    """Initialize default templates."""
+    """Initialize default templates (HTML form)."""
     default_templates = create_default_templates()
     existing = get_templates()
     existing_names = {t['name'] for t in existing}
     
+    created_count = 0
     for key, (subject, body) in default_templates.items():
         name = key.replace("_", " ").title()
         if name in existing_names:
@@ -170,8 +171,12 @@ async def init_default_templates(
             is_default=(key == "all_instances"),
             created_by=current_user['id']
         )
+        created_count += 1
     
-    return {"message": "Default templates initialized"}
+    return RedirectResponse(
+        url=f"/templates?message=Default+templates+initialized:+{created_count}+created",
+        status_code=302
+    )
 
 
 @router.post("/api/reset-defaults")
