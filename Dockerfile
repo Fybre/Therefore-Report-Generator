@@ -14,8 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 COPY templates/ ./templates/
-COPY email_templates/ ./email_templates/
-COPY data/ ./data/
+RUN mkdir -p /app/email_templates /app/data
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
