@@ -7,6 +7,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN apt-get update && apt-get install -y \
     gcc \
+    gosu \
     && pip install --no-cache-dir -r requirements.txt \
     && apt-get purge -y gcc \
     && apt-get autoremove -y \
@@ -21,7 +22,12 @@ RUN mkdir -p /app/email_templates /app/data
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Expose port
 EXPOSE 8000
