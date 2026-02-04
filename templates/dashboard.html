@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Therefore Report Generator{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Dashboard</h1>
+    <span class="text-muted">Welcome, {{ user.username }}!</span>
+</div>
+
+<!-- System Alerts (Admin Only) -->
+{% if system_alerts %}
+<div class="mb-4">
+    <div class="card border-0">
+        <div class="card-header bg-transparent border-0 pb-0">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>System Alerts</h5>
+        </div>
+        <div class="card-body">
+            {% for alert in system_alerts %}
+            <div class="alert alert-{{ alert.level }} d-flex align-items-start mb-2">
+                <div class="me-3">
+                    {% if alert.level == 'danger' %}
+                    <i class="bi bi-exclamation-octagon-fill fs-4"></i>
+                    {% elif alert.level == 'warning' %}
+                    <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                    {% else %}
+                    <i class="bi bi-info-circle-fill fs-4"></i>
+                    {% endif %}
+                </div>
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading mb-1">{{ alert.title }}</h6>
+                    <p class="mb-1">{{ alert.message }}</p>
+                    {% if alert.link %}
+                    <a href="{{ alert.link }}" class="btn btn-sm btn-{{ alert.level }} mt-1">
+                        <i class="bi bi-arrow-right me-1"></i>{{ alert.link_text }}
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Stats Row -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3">
+                    <i class="bi bi-buildings"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ stats.tenants }}</div>
+                    <div class="text-muted">Tenants</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-success bg-opacity-10 text-success me-3">
+                    <i class="bi bi-file-text"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ stats.reports }}</div>
+                    <div class="text-muted">Reports</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-info bg-opacity-10 text-info me-3">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ stats.active_reports }}</div>
+                    <div class="text-muted">Active Reports</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% if is_master_admin %}
+    <div class="col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ stats.users }}</div>
+                    <div class="text-muted">Users</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
+                    <i class="bi bi-building-check"></i>
+                </div>
+                <div>
+                    <div class="stat-value">{{ stats.tenants }}</div>
+                    <div class="text-muted">My Tenants</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row">
+    <!-- Upcoming Reports -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-calendar-check me-2"></i>Upcoming Reports</span>
+                <a href="/reports" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if upcoming %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Report</th>
+                                <th>Next Run</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in upcoming %}
+                            <tr>
+                                <td>{{ report.name }}</td>
+                                <td>
+                                    {% if report.next_run %}
+                                    {{ (report.next_run[:16] | replace('T', ' ')) if report.next_run is string else report.next_run.strftime('%Y-%m-%d %H:%M') }}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if report.enabled %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-calendar-x" style="font-size: 2rem;"></i>
+                    <p class="mt-2">No upcoming reports</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-activity me-2"></i>Recent Activity
+            </div>
+            <div class="card-body p-0">
+                {% if recent_runs %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Report</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for run in recent_runs %}
+                            <tr>
+                                <td>
+                                    <a href="/reports/{{ run.report_id }}/test" class="text-decoration-none">
+                                        {{ run.report_name }}
+                                    </a>
+                                </td>
+                                <td>{{ (run.started_at[:16] | replace('T', ' ')) if run.started_at is string else run.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if run.status == 'success' %}
+                                    <span class="badge status-success">Success</span>
+                                    {% elif run.status == 'error' %}
+                                    <span class="badge status-error">Error</span>
+                                    {% else %}
+                                    <span class="badge status-warning">Partial</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ run.instances_found }} instances, 
+                                        {{ run.emails_sent }} emails
+                                    </small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                    <p class="mt-2">No recent activity</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-lightning me-2"></i>Quick Actions
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <a href="/reports/new" class="btn btn-outline-primary w-100 py-3">
+                            <i class="bi bi-plus-lg d-block mb-2" style="font-size: 1.5rem;"></i>
+                            New Report
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/tenants/new" class="btn btn-outline-success w-100 py-3">
+                            <i class="bi bi-building-add d-block mb-2" style="font-size: 1.5rem;"></i>
+                            New Tenant
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/templates/new" class="btn btn-outline-info w-100 py-3">
+                            <i class="bi bi-envelope-plus d-block mb-2" style="font-size: 1.5rem;"></i>
+                            New Template
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/reports" class="btn btn-outline-secondary w-100 py-3">
+                            <i class="bi bi-list-check d-block mb-2" style="font-size: 1.5rem;"></i>
+                            Manage Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

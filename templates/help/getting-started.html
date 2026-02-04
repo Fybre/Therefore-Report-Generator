@@ -1,0 +1,123 @@
+{% extends "help/base.html" %}
+
+{% block help_content %}
+<div class="help-content">
+<h2>Getting Started</h2>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>New to Therefore Report Generator?</strong> This guide will walk you through the basics of the system.
+</div>
+
+<h3>What is Therefore Report Generator?</h3>
+<p>The Therefore Report Generator is a web application that monitors workflow instances across one or more Therefore systems and automatically sends email reports to relevant users. It helps teams stay informed about pending tasks, overdue items, and workflow status without manually checking the Therefore interface.</p>
+
+<h3>Key Concepts</h3>
+
+<h4>Tenants</h4>
+<p>A <strong>tenant</strong> represents a Therefore instance (e.g., your company's Therefore system). You can configure multiple tenants if you need to monitor workflows across different Therefore environments or companies.</p>
+
+<h4>Reports</h4>
+<p>A <strong>report</strong> defines what workflow data to collect, when to send it, and who should receive it. Reports run on a schedule (using cron expressions) and can be filtered by workflow processes.</p>
+
+<h4>Email Templates</h4>
+<p><strong>Email templates</strong> control the format and content of report emails. You can customize the subject, body, and styling to match your organization's branding.</p>
+
+<h3>User Roles</h3>
+<p>The system has three user roles with different permissions:</p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Role</th>
+            <th>Description</th>
+            <th>Key Permissions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><span class="badge bg-danger">Master Admin</span></td>
+            <td>Full system access</td>
+            <td>Manage users, tenants, SMTP settings, all reports</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-warning">Tenant Admin</span></td>
+            <td>Tenant-level management</td>
+            <td>Manage assigned tenants and their reports</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-secondary">User</span></td>
+            <td>View-only access</td>
+            <td>View reports and profile, receive emails</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>First Steps</h3>
+
+<ol>
+    <li><strong>Configure SMTP Settings</strong> (Master Admin)
+        <p>Go to <strong>SMTP Settings</strong> and add your email server configuration. This is required for sending report emails.</p>
+    </li>
+    
+    <li><strong>Add a Tenant</strong> (Master Admin)
+        <p>Navigate to <strong>Tenants</strong> → <strong>New Tenant</strong> and enter your Therefore instance details:
+        <ul>
+            <li><strong>Name:</strong> A friendly name for the tenant</li>
+            <li><strong>Base URL:</strong> Your Therefore URL (e.g., <code>https://company.thereforeonline.com</code>)</li>
+            <li><strong>Auth Token:</strong> Your Therefore REST API authorization token</li>
+        </ul>
+        </p>
+    </li>
+    
+    <li><strong>Test the Connection</strong>
+        <p>After saving the tenant, click <strong>Test Connection</strong> to verify the system can connect to Therefore.</p>
+    </li>
+    
+    <li><strong>Create a Report</strong>
+        <p>Go to <strong>Reports</strong> → <strong>New Report</strong> and configure:
+        <ul>
+            <li>Select the tenant to monitor</li>
+            <li>Choose which workflow processes to include</li>
+            <li>Set the schedule (cron expression)</li>
+            <li>Select an email template</li>
+        </ul>
+        </p>
+    </li>
+    
+    <li><strong>Test the Report</strong>
+        <p>Use the <strong>Test Report</strong> button to preview the email that will be sent. This runs the report immediately without waiting for the scheduled time.</p>
+    </li>
+    
+    <li><strong>Enable the Report</strong>
+        <p>Once testing is successful, enable the report to start scheduled execution.</p>
+    </li>
+</ol>
+
+<h3>Login Information</h3>
+<div class="alert alert-warning">
+    <ul class="mb-0">
+        <li>Your <strong>email address</strong> is your login ID</li>
+        <li>If you forget your password, use the "Forgot Password" link on the login page</li>
+        <li>Master admins can reset passwords for other users</li>
+    </ul>
+</div>
+
+<h3>Navigation Tips</h3>
+<ul>
+    <li>Use the <strong>sidebar menu</strong> on the left to access different sections</li>
+    <li>The <strong>Dashboard</strong> shows system statistics and upcoming reports</li>
+    <li>Click your username in the top-right for profile settings and logout</li>
+    <li>System alerts appear on the dashboard for configuration issues</li>
+</ul>
+
+<h3>Next Steps</h3>
+<p>Explore the detailed help sections for each feature:</p>
+<ul>
+    <li><a href="/help/tenants">Tenants</a> - Configure Therefore connections</li>
+    <li><a href="/help/reports">Reports</a> - Create and manage scheduled reports</li>
+    <li><a href="/help/templates">Email Templates</a> - Customize email notifications</li>
+    <li><a href="/help/smtp">SMTP Settings</a> - Configure email delivery</li>
+</ul>
+</div>
+{% endblock %}

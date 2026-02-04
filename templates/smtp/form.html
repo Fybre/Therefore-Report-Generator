@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if config else 'New' }} SMTP Config - Therefore Report Generator{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">{{ 'Edit' if config else 'New' }} SMTP Configuration</h1>
+    <a href="/smtp" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Back to SMTP
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" action="{{ '/smtp/' + config.id|string if config else '/smtp' }}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="name" class="form-label">Configuration Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" 
+                           value="{{ config.name if config else '' }}" required>
+                    <div class="form-text">A friendly name for this configuration</div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Options</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_default" name="is_default" 
+                               {{ 'checked' if config and config.is_default }}>
+                        <label class="form-check-label" for="is_default">
+                            Set as default SMTP configuration
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                               {{ 'checked' if not config or config.is_active }}>
+                        <label class="form-check-label" for="is_active">
+                            Active
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="use_tls" name="use_tls" 
+                               {{ 'checked' if not config or config.use_tls }}>
+                        <label class="form-check-label" for="use_tls">
+                            Use TLS
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="server" class="form-label">SMTP Server *</label>
+                    <input type="text" class="form-control" id="server" name="server" 
+                           value="{{ config.server if config else '' }}" 
+                           placeholder="smtp.gmail.com" required>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label for="port" class="form-label">Port *</label>
+                    <input type="number" class="form-control" id="port" name="port" 
+                           value="{{ config.port if config else '587' }}" required>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="username" class="form-label">Username *</label>
+                    <input type="text" class="form-control" id="username" name="username" 
+                           value="{{ config.username if config else '' }}" required>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="password" class="form-label">Password {{ '(leave blank to keep current)' if config else '*' }}</label>
+                    <input type="password" class="form-control" id="password" name="password" 
+                           {{ 'required' if not config }}>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <label for="from_address" class="form-label">From Address *</label>
+                    <input type="email" class="form-control" id="from_address" name="from_address" 
+                           value="{{ config.from_address if config else '' }}" 
+                           placeholder="noreply@example.com" required>
+                    <div class="form-text">The email address that will appear as the sender</div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <label for="from_name" class="form-label">From Name</label>
+                    <input type="text" class="form-control" id="from_name" name="from_name" 
+                           value="{{ config.from_name if config else '' }}" 
+                           placeholder="Report Generator">
+                    <div class="form-text">Display name for sender</div>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-2"></i>{{ 'Update' if config else 'Create' }} Configuration
+                </button>
+                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#testModal">
+                    <i class="bi bi-envelope-check me-2"></i>Test Configuration
+                </button>
+                <a href="/smtp" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Test Email Modal -->
+<div class="modal fade" id="testModal" tabindex="-1" aria-labelledby="testModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testModalLabel">
+                    <i class="bi bi-envelope-check me-2"></i>Test SMTP Configuration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Send a test email using the current form values (without saving).
+                </p>
+                <form id="testForm">
+                    <div class="mb-3">
+                        <label for="testEmail" class="form-label">Test Email Address *</label>
+                        <input type="email" class="form-control" id="testEmail" 
+                               placeholder="your@email.com" required>
+                        <div class="form-text">The test email will be sent to this address.</div>
+                    </div>
+                </form>
+                <div id="testResult" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="testBtn" onclick="sendTestEmail()">
+                    <i class="bi bi-send me-2"></i>Send Test Email
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function sendTestEmail() {
+    const emailInput = document.getElementById('testEmail');
+    const resultDiv = document.getElementById('testResult');
+    const testBtn = document.getElementById('testBtn');
+    
+    const email = emailInput.value.trim();
+    if (!email) {
+        resultDiv.className = 'alert alert-warning mt-3';
+        resultDiv.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Please enter an email address.';
+        resultDiv.classList.remove('d-none');
+        return;
+    }
+    
+    // Show loading state
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+    resultDiv.classList.add('d-none');
+    
+    try {
+        // Always gather current form values for testing (including any password changes)
+        const configData = {
+            name: document.getElementById('name').value || 'New Configuration',
+            server: document.getElementById('server').value,
+            port: parseInt(document.getElementById('port').value) || 587,
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value,
+            from_address: document.getElementById('from_address').value,
+            from_name: document.getElementById('from_name').value || 'Report Generator',
+            use_tls: document.getElementById('use_tls').checked
+        };
+        
+        // Validate required fields
+        if (!configData.server || !configData.username || !configData.password || !configData.from_address) {
+            throw new Error('Please fill in all required fields (Server, Username, Password, From Address) before testing.');
+        }
+        
+        const response = await fetch(`/smtp/api/smtp/test`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: email, config: configData })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            resultDiv.className = 'alert alert-success mt-3';
+            resultDiv.innerHTML = `<i class="bi bi-check-circle me-2"></i>${data.message}`;
+            emailInput.value = '';
+        } else {
+            resultDiv.className = 'alert alert-danger mt-3';
+            resultDiv.innerHTML = `<i class="bi bi-x-circle me-2"></i>${data.message || 'Failed to send test email.'}`;
+        }
+    } catch (error) {
+        resultDiv.className = 'alert alert-danger mt-3';
+        resultDiv.innerHTML = `<i class="bi bi-x-circle me-2"></i>Error: ${error.message}`;
+    } finally {
+        resultDiv.classList.remove('d-none');
+        testBtn.disabled = false;
+        testBtn.innerHTML = '<i class="bi bi-send me-2"></i>Send Test Email';
+    }
+}
+
+// Reset result when modal is closed
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('testModal');
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', function() {
+            const resultDiv = document.getElementById('testResult');
+            const emailInput = document.getElementById('testEmail');
+            if (resultDiv) {
+                resultDiv.classList.add('d-none');
+                resultDiv.innerHTML = '';
+            }
+            if (emailInput) {
+                emailInput.value = '';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

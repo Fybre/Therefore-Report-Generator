@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initial Setup - Therefore Report Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #34495e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+        
+        .setup-card {
+            width: 100%;
+            max-width: 500px;
+            padding: 2.5rem;
+            border: none;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            background: white;
+        }
+        
+        .setup-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .setup-icon {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .form-floating > .form-control:focus ~ label,
+        .form-floating > .form-control:not(:placeholder-shown) ~ label {
+            color: var(--primary-color);
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+            border-color: #2980b9;
+        }
+        
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-card">
+        <div class="setup-header">
+            <i class="bi bi-gear-fill setup-icon"></i>
+            <h2 class="mb-2">Initial Setup</h2>
+            <p class="text-muted mb-0">Welcome! Let's configure your Therefore Report Generator.</p>
+        </div>
+        
+        {% if errors %}
+        <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Please fix the following:</strong>
+            <ul class="mb-0 mt-2">
+                {% for error in errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        <form method="post" action="/setup">
+            <!-- Step 1: Admin Account -->
+            <div class="mb-4">
+                <h5 class="mb-3">
+                    <span class="step-number">1</span>
+                    Create Admin Account
+                </h5>
+                
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="admin_name" name="admin_name" 
+                           placeholder="John Smith" value="{{ admin_name or '' }}" required>
+                    <label for="admin_name">Full Name</label>
+                </div>
+                
+                <div class="form-floating mb-3">
+                    <input type="email" class="form-control" id="admin_email" name="admin_email" 
+                           placeholder="admin@example.com" value="{{ admin_email or '' }}" required>
+                    <label for="admin_email">Email (Login ID)</label>
+                </div>
+                
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="admin_password" name="admin_password" 
+                           placeholder="Password" minlength="6" required>
+                    <label for="admin_password">Password</label>
+                </div>
+                
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
+                           placeholder="Confirm Password" minlength="6" required>
+                    <label for="confirm_password">Confirm Password</label>
+                </div>
+            </div>
+            
+            <!-- Step 2: Application URL -->
+            <div class="mb-4">
+                <h5 class="mb-3">
+                    <span class="step-number">2</span>
+                    Application URL
+                </h5>
+                
+                <div class="form-floating mb-2">
+                    <input type="url" class="form-control" id="base_url" name="base_url" 
+                           placeholder="https://reports.example.com" 
+                           value="{{ detected_base_url }}" required>
+                    <label for="base_url">Base URL</label>
+                </div>
+                
+                <div class="form-text text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    This URL was auto-detected. Update it if needed for external access.
+                </div>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-check-lg me-2"></i>Complete Setup
+                </button>
+            </div>
+        </form>
+        
+        <hr class="my-4">
+        
+        <div class="text-center text-muted small">
+            <i class="bi bi-shield-check me-1"></i>
+            This setup page will only be shown once.
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

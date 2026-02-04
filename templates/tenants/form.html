@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if tenant else 'New' }} Tenant - Therefore Report Generator{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">{{ 'Edit' if tenant else 'New' }} Tenant</h1>
+    <a href="/tenants" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Tenants
+    </a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger mb-4">
+    <i class="bi bi-exclamation-octagon me-2"></i>{{ error }}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" action="{{ '/tenants/' + tenant.id|string if tenant else '/tenants' }}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="name" class="form-label">Tenant Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" 
+                           value="{{ tenant.name if tenant else '' }}" required>
+                    <div class="form-text">A friendly name for this Therefore instance</div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="base_url" class="form-label">Base URL</label>
+                    <input type="url" class="form-control" id="base_url" name="base_url" 
+                           value="{{ tenant.base_url if tenant else '' }}" 
+                           placeholder="https://company.thereforeonline.com">
+                    <div class="form-text">The Therefore instance URL (leave blank to configure later)</div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="auth_token" class="form-label">Authorization Token</label>
+                <input type="password" class="form-control" id="auth_token" name="auth_token" 
+                       value="" placeholder="{{ 'Leave blank to keep current' if tenant else 'Enter auth token (optional)' }}">
+                <div class="form-text">The Therefore REST API authorization token (leave blank to configure later)</div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ tenant.description if tenant else '' }}</textarea>
+            </div>
+            
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                           {{ 'checked' if not tenant or tenant.is_active }}>
+                    <label class="form-check-label" for="is_active">
+                        Active
+                    </label>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-2"></i>{{ 'Update' if tenant else 'Create' }} Tenant
+                </button>
+                <button type="button" class="btn btn-outline-info" id="testConnectionBtn" onclick="testConnection()">
+                    <i class="bi bi-plug me-2"></i>Test Connection
+                </button>
+                <a href="/tenants" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if tenant %}
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle me-2"></i>Tenant Information
+    </div>
+    <div class="card-body">
+        <table class="table table-borderless">
+            <tr>
+                <td class="fw-bold" style="width: 150px;">Created:</td>
+                <td>{% if tenant.created_at %}{{ (tenant.created_at[:16] | replace('T', ' ')) if tenant.created_at is string else tenant.created_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</td>
+            </tr>
+            <tr>
+                <td class="fw-bold">Last Updated:</td>
+                <td>{% if tenant.updated_at %}{{ (tenant.updated_at[:16] | replace('T', ' ')) if tenant.updated_at is string else tenant.updated_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% block extra_js %}
+<script>
+async function testConnection() {
+    const btn = document.getElementById('testConnectionBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Testing...';
+    btn.disabled = true;
+    
+    try {
+        {% if tenant %}
+        // For existing tenant, use stored credentials
+        const response = await fetch('/tenants/api/{{ tenant.id }}/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        {% else %}
+        // For new tenant, use form values
+        const baseUrl = document.getElementById('base_url').value;
+        const name = document.getElementById('name').value;
+        const authToken = document.getElementById('auth_token').value;
+        
+        if (!name) {
+            showToast('Please enter a tenant name', 'error');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+        
+        if (!baseUrl || !authToken) {
+            showToast('Base URL and Auth Token are required to test connection', 'error');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+        
+        const response = await fetch('/tenants/api/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                base_url: baseUrl, 
+                tenant_name: name, 
+                auth_token: authToken 
+            })
+        });
+        {% endif %}
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            showToast(`Connection successful! Customer ID: ${result.customer_id}`, 'success');
+        } else {
+            const errorMsg = result.error || result.detail || 'Unknown error';
+            showToast(`Connection failed: ${errorMsg}`, 'error');
+        }
+    } catch (error) {
+        showToast(`Error: ${error.message}`, 'error');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}
+
+{% endblock %}

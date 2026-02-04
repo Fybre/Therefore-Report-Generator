@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Therefore Report Generator{% endblock %}
+
+{% block body %}
+<div class="login-container">
+    <div class="card login-card">
+        <div class="text-center mb-4">
+            <i class="bi bi-envelope-paper-fill" style="font-size: 3rem; color: var(--primary-color);"></i>
+            <h2 class="mt-3">Report Generator</h2>
+            <p class="text-muted">Sign in to your account</p>
+        </div>
+        
+        <form id="loginForm">
+            <div class="form-floating mb-3">
+                <input type="email" class="form-control" id="email" name="email" placeholder="Email" required>
+                <label for="email">Email</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                <label for="password">Password</label>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div></div>
+                <a href="/forgot-password" class="text-decoration-none small">Forgot password?</a>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+            </button>
+        </form>
+        
+        {% if message %}
+        <div class="alert alert-success mt-3">
+            <i class="bi bi-check-circle me-2"></i>{{ message }}
+        </div>
+        {% endif %}
+        <div id="errorMessage" class="alert alert-danger mt-3 d-none"></div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            
+            if (response.ok) {
+                window.location.href = '/';
+            } else {
+                const errorDiv = document.getElementById('errorMessage');
+                errorDiv.textContent = 'Invalid email or password';
+                errorDiv.classList.remove('d-none');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+        }
+    });
+</script>
+{% endblock %}

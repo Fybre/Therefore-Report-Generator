@@ -1,0 +1,226 @@
+{% extends "help/base.html" %}
+
+{% block help_content %}
+<div class="help-content">
+<h2>Reports</h2>
+
+<p class="lead">Reports automatically monitor workflow instances and send email notifications on a schedule. Learn how to create, configure, and manage reports.</p>
+
+<h3>What is a Report?</h3>
+<p>A report defines:</p>
+<ul>
+    <li><strong>What to monitor:</strong> Which tenant and workflow processes</li>
+    <li><strong>When to send:</strong> Schedule using cron expressions</li>
+    <li><strong>Who receives it:</strong> Email recipients and templates</li>
+    <li><strong>How to filter:</strong> Instance criteria and sorting options</li>
+</ul>
+
+<h3>Creating a Report</h3>
+
+<h4>Step 1: Basic Information</h4>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Field</th>
+            <th>Description</th>
+            <th>Example</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Report Name</td>
+            <td>Descriptive name for the report</td>
+            <td>"Weekly Overdue Tasks"</td>
+        </tr>
+        <tr>
+            <td>Description</td>
+            <td>Optional details about the report</td>
+            <td>"Sent every Monday at 9 AM"</td>
+        </tr>
+        <tr>
+            <td>Tenant</td>
+            <td>The Therefore instance to monitor</td>
+            <td>Select from active tenants</td>
+        </tr>
+    </tbody>
+</table>
+
+<h4>Step 2: Schedule Configuration</h4>
+<p>Reports use <strong>cron expressions</strong> to define when they run:</p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Cron Expression</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>0 9 * * 1</code></td>
+            <td>Every Monday at 9:00 AM</td>
+        </tr>
+        <tr>
+            <td><code>0 9 * * *</code></td>
+            <td>Every day at 9:00 AM</td>
+        </tr>
+        <tr>
+            <td><code>0 */6 * * *</code></td>
+            <td>Every 6 hours</td>
+        </tr>
+        <tr>
+            <td><code>0 9 1 * *</code></td>
+            <td>First day of each month at 9:00 AM</td>
+        </tr>
+        <tr>
+            <td><code>0 17 * * 5</code></td>
+            <td>Every Friday at 5:00 PM</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Cron Format:</strong> <code>minute hour day month weekday</code><br>
+    Use <code>*</code> for "any value" and numbers for specific times.
+</div>
+
+<h4>Step 3: Workflow Processes</h4>
+<p>Select which workflow processes to include in the report:</p>
+<ul>
+    <li>Click <strong>Load Processes</strong> to fetch available processes from the tenant</li>
+    <li>Select one or more processes from the list</li>
+    <li>Leave empty to include <strong>all</strong> processes</li>
+</ul>
+
+<h4>Step 4: Email Configuration</h4>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Field</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Email Template</td>
+            <td>Select the template for formatting the email</td>
+        </tr>
+        <tr>
+            <td>Send All to Admin</td>
+            <td>Send a copy of all emails to the admin email address</td>
+        </tr>
+        <tr>
+            <td>Admin Email</td>
+            <td>Override email address for admin copies (optional)</td>
+        </tr>
+        <tr>
+            <td>Sort Order</td>
+            <td>How to sort instances: Due Date, Start Date, or Process Name</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Testing Reports</h3>
+<p>Before enabling a report, always test it:</p>
+<ol>
+    <li>Click <strong>Test Report</strong> on the report form or list</li>
+    <li>The system will fetch current workflow instances</li>
+    <li>A preview email is generated and sent (if SMTP is configured)</li>
+    <li>Review the results and email format</li>
+</ol>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>Test Mode:</strong> Test reports run immediately regardless of the schedule. They also work when the report is disabled.
+</div>
+
+<h3>Report Status</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Status</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><span class="badge bg-success">Active</span></td>
+            <td>Report runs on schedule automatically</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-secondary">Disabled</span></td>
+            <td>Report will not run automatically (can still be tested)</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Report Run Logs</h3>
+<p>View execution history for all reports:</p>
+<ul>
+    <li>Navigate to <strong>Reports</strong> → <strong>Run Logs</strong></li>
+    <li>Filter by tenant, status, or date range</li>
+    <li>See instances found and emails sent for each run</li>
+</ul>
+
+<h3>Running Reports Manually</h3>
+<p>To run a report immediately (outside the schedule):</p>
+<ol>
+    <li>Go to the Reports list</li>
+    <li>Click the <strong>Run Now</strong> button for the report</li>
+    <li>Wait for execution to complete</li>
+    <li>Check Run Logs for results</li>
+</ol>
+
+<h3>Best Practices</h3>
+<ul>
+    <li><strong>Test before enabling:</strong> Always test reports with real data first</li>
+    <li><strong>Reasonable schedules:</strong> Don't schedule reports too frequently (e.g., every minute)</li>
+    <li><strong>Clear naming:</strong> Use descriptive names that indicate frequency and purpose</li>
+    <li><strong>Monitor logs:</strong> Check run logs periodically for errors or failures</li>
+    <li><strong>Sort appropriately:</strong> Sort by due date for overdue reports, start date for new items</li>
+</ul>
+
+<h3>Email Recipients</h3>
+<p>Emails are sent based on workflow instance assignments:</p>
+<ul>
+    <li><strong>Task Owners:</strong> Users assigned to workflow tasks receive emails</li>
+    <li><strong>Process Managers:</strong> Can be configured in the email template</li>
+    <li><strong>Admin Copies:</strong> Optional copy to admin for monitoring</li>
+</ul>
+
+<h3>Troubleshooting</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Issue</th>
+            <th>Solution</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Report not running</td>
+            <td>Check if report is enabled and tenant is active</td>
+        </tr>
+        <tr>
+            <td>"No tenant available"</td>
+            <td>Create and activate at least one tenant first</td>
+        </tr>
+        <tr>
+            <td>Emails not sent</td>
+            <td>Verify SMTP settings and check run logs for errors</td>
+        </tr>
+        <tr>
+            <td>Wrong process data</td>
+            <td>Refresh the process list or check tenant connection</td>
+        </tr>
+        <tr>
+            <td>Schedule not working</td>
+            <td>Validate cron expression format</td>
+        </tr>
+    </tbody>
+</table>
+</div>
+{% endblock %}

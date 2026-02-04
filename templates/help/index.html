@@ -1,0 +1,101 @@
+{% extends "help/base.html" %}
+
+{% block help_content %}
+<h2 class="mb-4">Help & Documentation</h2>
+
+<p class="lead">Welcome to the Therefore Report Generator documentation. This help system will guide you through all features and functions of the application.</p>
+
+<div class="row g-4 mt-2">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-rocket-takeoff me-2 text-primary"></i>Getting Started</h5>
+                <p class="card-text">New to the system? Learn about the basics, user roles, and how to navigate the application.</p>
+                <a href="/help/getting-started" class="btn btn-outline-primary btn-sm">Read Guide</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-buildings me-2 text-success"></i>Tenants</h5>
+                <p class="card-text">Learn how to configure Therefore tenants, set up API connections, and manage multiple instances.</p>
+                <a href="/help/tenants" class="btn btn-outline-primary btn-sm">Read Guide</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-file-text me-2 text-info"></i>Reports</h5>
+                <p class="card-text">Create scheduled reports, configure workflow monitoring, and manage email delivery.</p>
+                <a href="/help/reports" class="btn btn-outline-primary btn-sm">Read Guide</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-envelope me-2 text-warning"></i>Email Templates</h5>
+                <p class="card-text">Customize email notifications with templates, variables, and formatting options.</p>
+                <a href="/help/templates" class="btn btn-outline-primary btn-sm">Read Guide</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-gear me-2 text-secondary"></i>SMTP Settings</h5>
+                <p class="card-text">Configure email server settings for report delivery and notifications.</p>
+                <a href="/help/smtp" class="btn btn-outline-primary btn-sm">Read Guide</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-people me-2 text-danger"></i>User Management</h5>
+                <p class="card-text">Manage users, assign roles, and configure tenant access permissions.</p>
+                <a href="/help/users" class="btn btn-outline-primary btn-sm">Read Guide</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-shield-check me-2 text-dark"></i>Roles & Permissions</h5>
+                <p class="card-text">Understand the three user roles and their access levels in the system.</p>
+                <a href="/help/roles" class="btn btn-outline-primary btn-sm">Read Guide</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-tools me-2 text-primary"></i>Troubleshooting</h5>
+                <p class="card-text">Common issues, error messages, and solutions for system problems.</p>
+                <a href="/help/troubleshooting" class="btn btn-outline-primary btn-sm">Read Guide</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr class="my-5">
+
+<h4>Quick Tips</h4>
+<div class="alert alert-info">
+    <ul class="mb-0">
+        <li><strong>Login:</strong> Use your email address to log in, not your username.</li>
+        <li><strong>Reports:</strong> Reports can only be created for active tenants with complete configuration.</li>
+        <li><strong>Schedule:</strong> Use cron expressions to schedule reports (e.g., <code>0 9 * * 1</code> for Monday 9 AM).</li>
+        <li><strong>Test:</strong> Always test your report configuration before enabling scheduled delivery.</li>
+    </ul>
+</div>
+{% endblock %}

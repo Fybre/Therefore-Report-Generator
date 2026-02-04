@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if report else 'New' }} Report - Therefore Report Generator{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">{{ 'Edit' if report else 'New' }} Report</h1>
+    <a href="/reports" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Reports
+    </a>
+</div>
+
+{% if not report and not tenants %}
+<div class="alert alert-warning mb-4">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>No active tenants available.</strong> 
+    You cannot create a report until at least one tenant is activated.
+    <a href="/tenants" class="alert-link">View Tenants</a>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" action="{{ '/reports/' + report.id|string if report else '/reports' }}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="name" class="form-label">Report Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" 
+                           value="{{ report.name if report else '' }}" required>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="tenant_id" class="form-label">Tenant *</label>
+                    <select class="form-select" id="tenant_id" name="tenant_id" required>
+                        <option value="">Select a tenant...</option>
+                        {% for tenant in tenants %}
+                        <option value="{{ tenant.id }}" 
+                                {{ 'selected' if report and report.tenant_id == tenant.id }}>
+                            {{ tenant.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="2">{{ report.description if report else '' }}</textarea>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="template_id" class="form-label">Email Template *</label>
+                    <select class="form-select" id="template_id" name="template_id" required>
+                        <option value="">Select a template...</option>
+                        {% for template in templates %}
+                        <option value="{{ template.id }}"
+                                {{ 'selected' if report and report.template_id == template.id }}>
+                            {{ template.name }}
+                            {% if template.is_default %}(Default){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="sort_order" class="form-label">Sort Instances By</label>
+                    <select class="form-select" id="sort_order" name="sort_order">
+                        <option value="task_due_date" {{ 'selected' if not report or report.sort_order == 'task_due_date' }}>
+                            Task Due Date (overdue first)
+                        </option>
+                        <option value="process_name" {{ 'selected' if report and report.sort_order == 'process_name' }}>
+                            Process Name, then Due Date
+                        </option>
+                        <option value="task_start_date" {{ 'selected' if report and report.sort_order == 'task_start_date' }}>
+                            Task Start Date (chronological)
+                        </option>
+                    </select>
+                    <div class="form-text">
+                        How workflow instances are ordered in emails
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Schedule *</label>
+                
+                <!-- Preset Schedule Dropdown -->
+                <div class="mb-2">
+                    <select class="form-select" id="schedule_preset" onchange="applyPreset()">
+                        <option value="">-- Select a preset schedule --</option>
+                        <option value="0 8 * * 1">Weekly - Monday at 8:00 AM</option>
+                        <option value="0 8 * * 5">Weekly - Friday at 8:00 AM</option>
+                        <option value="0 8 * * 1,5">Weekly - Monday & Friday at 8:00 AM</option>
+                        <option value="0 8 * * 0">Weekly - Sunday at 8:00 AM</option>
+                        <option value="0 8 * * *">Daily - Every day at 8:00 AM</option>
+                        <option value="0 17 * * *">Daily - Every day at 5:00 PM</option>
+                        <option value="0 8 * * 1-5">Weekdays - Monday to Friday at 8:00 AM</option>
+                        <option value="0 17 * * 1-5">Weekdays - Monday to Friday at 5:00 PM</option>
+                        <option value="0 8 1 * *">Monthly - 1st of month at 8:00 AM</option>
+                        <option value="0 0 1 * *">Monthly - 1st of month at midnight</option>
+                        <option value="0 */6 * * *">Every 6 hours</option>
+                        <option value="0 */12 * * *">Every 12 hours</option>
+                        <option value="custom">Custom (enter manually)</option>
+                    </select>
+                </div>
+                
+                <!-- Cron Expression Input -->
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-clock"></i></span>
+                    <input type="text" class="form-control font-monospace" id="cron_schedule" name="cron_schedule"
+                           value="{{ report.cron_schedule if report else '0 8 * * 1' }}" required
+                           onchange="updateNextRuns()" onkeyup="updateNextRuns()">
+                </div>
+                
+                <!-- Next Run Preview -->
+                <div id="nextRunsPreview" class="mt-2 small">
+                    <span class="text-muted">Loading next run times...</span>
+                </div>
+                
+                <div class="form-text">
+                    Cron expression format: minute hour day month weekday
+                    <a href="https://crontab.guru/" target="_blank" class="ms-1">Need help?</a>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label for="workflow_processes" class="form-label">Workflow Processes</label>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="loadProcessesBtn" onclick="loadWorkflowProcesses(false)" disabled>
+                            <i class="bi bi-arrow-clockwise me-1"></i>Load
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" id="loadProcessesDropdown" disabled>
+                            <span class="visually-hidden">Toggle Dropdown</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="loadWorkflowProcesses(false); return false;"><i class="bi bi-speedometer2 me-2"></i>Load (Cached)</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="loadWorkflowProcesses(true); return false;"><i class="bi bi-cloud-arrow-down me-2"></i>Refresh from Server</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <select class="form-select" id="workflow_processes" name="workflow_processes" multiple size="5">
+                    <option value="" disabled>Loading processes...</option>
+                </select>
+                <div class="form-text">
+                    Select one or more processes (leave empty for all processes). Hold Ctrl/Cmd to select multiple.
+                </div>
+                <input type="hidden" id="workflow_processes_json" name="workflow_processes_json" value="{{ report.workflow_processes|tojson if report and report.workflow_processes else '[]' }}">
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">Options</div>
+                        <div class="card-body">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="enabled" name="enabled" 
+                                       {{ 'checked' if not report or report.enabled }}>
+                                <label class="form-check-label" for="enabled">
+                                    Enabled
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="send_all_to_admin" name="send_all_to_admin" 
+                                       {{ 'checked' if report and report.send_all_to_admin }}>
+                                <label class="form-check-label" for="send_all_to_admin">
+                                    Send all emails to admin (for testing)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">Admin Email</div>
+                        <div class="card-body">
+                            <input type="email" class="form-control" id="admin_email" name="admin_email" 
+                                   value="{{ report.admin_email if report else '' }}">
+                            <div class="form-text">Override recipient for testing</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-2"></i>{{ 'Update' if report else 'Create' }} Report
+                </button>
+                <a href="/reports" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if report %}
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle me-2"></i>Report Information
+    </div>
+    <div class="card-body">
+        <table class="table table-borderless">
+            <tr>
+                <td class="fw-bold" style="width: 150px;">Last Run:</td>
+                <td>
+                    {% if report.last_run %}
+                    {{ (report.last_run[:16] | replace('T', ' ')) if report.last_run is string else report.last_run.strftime('%Y-%m-%d %H:%M') }}
+                    <span class="badge {{ 'bg-success' if report.last_run_status == 'success' else 'bg-danger' if report.last_run_status == 'error' else 'bg-warning' }}">
+                        {{ report.last_run_status or 'Unknown' }}
+                    </span>
+                    {% else %}
+                    <span class="text-muted">Never</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% if report.last_run_message %}
+            <tr>
+                <td class="fw-bold">Last Message:</td>
+                <td><small>{{ report.last_run_message }}</small></td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td class="fw-bold">Created:</td>
+                <td>{% if report.created_at %}{{ (report.created_at[:16] | replace('T', ' ')) if report.created_at is string else report.created_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</td>
+            </tr>
+        </table>
+        <div class="d-flex gap-2 mt-3">
+            <a href="/reports/{{ report.id }}/test" class="btn btn-outline-info">
+                <i class="bi bi-bug me-2"></i>Test Report
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% block extra_js %}
+<script>
+// Pre-selected processes from the report
+const selectedProcesses = {{ report.workflow_processes|tojson if report and report.workflow_processes else '[]' }};
+
+// Preset schedule handling
+function applyPreset() {
+    const preset = document.getElementById('schedule_preset').value;
+    const cronInput = document.getElementById('cron_schedule');
+    
+    if (preset && preset !== 'custom') {
+        cronInput.value = preset;
+        updateNextRuns();
+    }
+}
+
+// Update next runs preview
+function updateNextRuns() {
+    const cronExpr = document.getElementById('cron_schedule').value;
+    const previewDiv = document.getElementById('nextRunsPreview');
+    
+    if (!cronExpr) {
+        previewDiv.innerHTML = '<span class="text-muted">Enter a schedule to see next run times</span>';
+        return;
+    }
+    
+    try {
+        // Simple cron parser for preview (supports basic expressions)
+        const nextRuns = calculateNextRuns(cronExpr, 3);
+        if (nextRuns.length > 0) {
+            previewDiv.innerHTML = '<span class="text-success"><i class="bi bi-calendar-check me-1"></i>Next runs: ' + 
+                nextRuns.map(d => d.toLocaleString()).join(', ') + '</span>';
+        } else {
+            previewDiv.innerHTML = '<span class="text-warning">Unable to calculate next runs</span>';
+        }
+    } catch (e) {
+        previewDiv.innerHTML = '<span class="text-danger">Invalid cron expression</span>';
+    }
+}
+
+// Calculate next run times from cron expression
+function calculateNextRuns(cronExpr, count) {
+    const parts = cronExpr.trim().split(/\s+/);
+    if (parts.length !== 5) return [];
+    
+    const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+    const runs = [];
+    let current = new Date();
+    current.setSeconds(0, 0);
+    
+    // Parse cron field (supports * , - /)
+    function matchesField(value, field) {
+        if (field === '*') return true;
+        if (field.includes(',')) {
+            return field.split(',').some(v => matchesField(value, v.trim()));
+        }
+        if (field.includes('-')) {
+            const [start, end] = field.split('-').map(Number);
+            return value >= start && value <= end;
+        }
+        if (field.includes('/')) {
+            const [base, step] = field.split('/');
+            if (base !== '*') return false;
+            return value % Number(step) === 0;
+        }
+        return value === Number(field);
+    }
+    
+    // Find next runs (max 2 years ahead)
+    const maxDate = new Date(current.getTime() + 730 * 24 * 60 * 60 * 1000);
+    
+    while (runs.length < count && current < maxDate) {
+        current.setMinutes(current.getMinutes() + 1);
+        
+        const m = current.getMinutes();
+        const h = current.getHours();
+        const dom = current.getDate();
+        const mon = current.getMonth() + 1;
+        const dow = current.getDay(); // 0 = Sunday
+        
+        // Convert Sunday from 0 to 7 for cron compatibility
+        const cronDow = dow === 0 ? 7 : dow;
+        
+        if (matchesField(m, minute) &&
+            matchesField(h, hour) &&
+            matchesField(dom, dayOfMonth) &&
+            matchesField(mon, month) &&
+            (matchesField(dow, dayOfWeek) || matchesField(cronDow, dayOfWeek))) {
+            runs.push(new Date(current));
+        }
+    }
+    
+    return runs;
+}
+
+// Set initial preset based on cron value
+function setInitialPreset() {
+    const cronInput = document.getElementById('cron_schedule');
+    const presetSelect = document.getElementById('schedule_preset');
+    
+    // Find matching preset
+    for (let i = 0; i < presetSelect.options.length; i++) {
+        if (presetSelect.options[i].value === cronInput.value) {
+            presetSelect.selectedIndex = i;
+            break;
+        }
+    }
+    
+    updateNextRuns();
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setInitialPreset();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const tenantSelect = document.getElementById('tenant_id');
+    const loadBtn = document.getElementById('loadProcessesBtn');
+    const loadDropdown = document.getElementById('loadProcessesDropdown');
+    
+    // Enable/disable load button based on tenant selection
+    tenantSelect.addEventListener('change', function() {
+        loadBtn.disabled = !this.value;
+        if (loadDropdown) loadDropdown.disabled = !this.value;
+        if (this.value) {
+            loadWorkflowProcesses(false);
+        } else {
+            // Clear the select
+            const processSelect = document.getElementById('workflow_processes');
+            processSelect.innerHTML = '<option value="" disabled>Select a tenant first...</option>';
+        }
+    });
+    
+    // Load processes if tenant is already selected (edit mode)
+    if (tenantSelect.value) {
+        loadBtn.disabled = false;
+        if (loadDropdown) loadDropdown.disabled = false;
+        loadWorkflowProcesses(false);
+    } else {
+        const processSelect = document.getElementById('workflow_processes');
+        processSelect.innerHTML = '<option value="" disabled>Select a tenant first...</option>';
+    }
+});
+
+async function loadWorkflowProcesses(refresh = false) {
+    const tenantId = document.getElementById('tenant_id').value;
+    if (!tenantId) {
+        showToast('Please select a tenant first', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('loadProcessesBtn');
+    const loadDropdown = document.getElementById('loadProcessesDropdown');
+    const processSelect = document.getElementById('workflow_processes');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    if (loadDropdown) loadDropdown.disabled = true;
+    btn.innerHTML = refresh ? 
+        '<i class="bi bi-cloud-arrow-down me-1"></i>Refreshing...' : 
+        '<i class="bi bi-hourglass-split me-1"></i>Loading...';
+    processSelect.innerHTML = '<option value="" disabled>Loading processes...</option>';
+    
+    try {
+        const url = refresh ? 
+            `/tenants/api/${tenantId}/processes?refresh=true` : 
+            `/tenants/api/${tenantId}/processes`;
+        const response = await fetch(url);
+        const result = await response.json();
+        
+        if (result.success && result.processes) {
+            processSelect.innerHTML = '';
+
+            if (result.processes.length === 0) {
+                processSelect.innerHTML = '<option value="" disabled>No workflow processes found</option>';
+            } else {
+                // Group processes by folder name
+                const grouped = {};
+                result.processes.forEach(process => {
+                    const folder = process.folder_name || 'Other';
+                    if (!grouped[folder]) {
+                        grouped[folder] = [];
+                    }
+                    grouped[folder].push(process);
+                });
+
+                // Sort folder names and create optgroups
+                const folders = Object.keys(grouped).sort();
+                folders.forEach(folder => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = folder;
+
+                    grouped[folder].forEach(process => {
+                        const option = document.createElement('option');
+                        option.value = process.process_no;
+                        option.textContent = process.process_name;
+
+                        // Check if this process was previously selected
+                        if (selectedProcesses.includes(process.process_no)) {
+                            option.selected = true;
+                        }
+
+                        optgroup.appendChild(option);
+                    });
+
+                    processSelect.appendChild(optgroup);
+                });
+
+                showToast(`Loaded ${result.processes.length} workflow processes`, 'success');
+            }
+        } else {
+            processSelect.innerHTML = `<option value="" disabled>Error: ${result.error || 'Failed to load processes'}</option>`;
+            showToast(result.error || 'Failed to load processes', 'error');
+        }
+    } catch (error) {
+        processSelect.innerHTML = `<option value="" disabled>Error: ${error.message}</option>`;
+        showToast(`Error loading processes: ${error.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        if (loadDropdown) loadDropdown.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// Before form submission, convert selected processes to JSON
+document.querySelector('form').addEventListener('submit', function() {
+    const processSelect = document.getElementById('workflow_processes');
+    const selectedOptions = Array.from(processSelect.selectedOptions);
+    const selectedValues = selectedOptions.map(opt => parseInt(opt.value));
+    
+    // Update the hidden input with selected processes
+    document.getElementById('workflow_processes_json').value = JSON.stringify(selectedValues);
+});
+</script>
+{% endblock %}
+
+{% endblock %}

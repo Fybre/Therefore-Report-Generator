@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+
+{% block title %}User Administration - Therefore Report Generator{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0"><i class="bi bi-people-gear me-2"></i>User Administration</h1>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <i class="bi bi-person-plus me-2"></i>Add User
+    </button>
+</div>
+
+<!-- Users Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people me-2"></i>All Users</span>
+        <span class="badge bg-secondary">{{ users|length }} users</span>
+    </div>
+    <div class="card-body p-0">
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Assigned Tenants</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>
+                            <strong>{{ u.username }}</strong>
+                            {% if u.email %}
+                            <br><small class="text-muted">{{ u.email }}</small>
+                            {% endif %}
+                            {% if u.id == user.id %}
+                            <span class="badge bg-info ms-1">You</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.role == 'master_admin' %}
+                            <span class="badge bg-danger">Master Admin</span>
+                            {% elif u.role == 'tenant_admin' %}
+                            <span class="badge bg-warning">Tenant Admin</span>
+                            {% else %}
+                            <span class="badge bg-secondary">User</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.is_active %}
+                            <span class="badge bg-success">Active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.role == 'master_admin' %}
+                            <span class="text-muted">All Tenants</span>
+                            {% elif u.assigned_tenants %}
+                                {% for ta in u.assigned_tenants %}
+                                <span class="badge bg-light text-dark border">
+                                    {{ ta.tenant_name }} ({{ ta.role }})
+                                </span>{% if not loop.last %} {% endif %}
+                                {% endfor %}
+                            {% else %}
+                            <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" 
+                                    onclick="editUser({{ u.id }})" title="Edit User">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" 
+                                    onclick="resetPassword({{ u.id }}, '{{ u.username }}')" title="Reset Password">
+                                <i class="bi bi-key"></i>
+                            </button>
+                            {% if u.id != user.id %}
+                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                    onclick="deleteUser({{ u.id }}, '{{ u.username }}')" title="Delete User">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-people" style="font-size: 3rem;"></i>
+            <h5 class="mt-3">No users found</h5>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Add New User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="mb-3">
+                        <label for="new_email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="new_email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_name" class="form-label">Display Name</label>
+                        <input type="text" class="form-control" id="new_name">
+                        <div class="form-text">Optional. Auto-generated from email if not provided.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">Password *</label>
+                        <input type="password" class="form-control" id="new_password" required minlength="6">
+                        <div class="form-text">Minimum 6 characters.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_role" class="form-label">Role *</label>
+                        <select class="form-select" id="new_role" onchange="toggleTenantAssignment()">
+                            <option value="user">User</option>
+                            <option value="tenant_admin">Tenant Admin</option>
+                            <option value="master_admin">Master Admin</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="tenantAssignmentSection">
+                        <label class="form-label">Assign to Tenants</label>
+                        <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+                            {% for tenant in tenants %}
+                            <div class="form-check">
+                                <input class="form-check-input tenant-check" type="checkbox" 
+                                       value="{{ tenant.id }}" id="tenant_{{ tenant.id }}">
+                                <label class="form-check-label" for="tenant_{{ tenant.id }}">
+                                    {{ tenant.name }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </form>
+                <div id="addUserResult" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="addUserBtn" onclick="saveNewUser()">
+                    <i class="bi bi-save me-2"></i>Create User
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="edit_user_id">
+                    <div class="mb-3">
+                        <label for="edit_username" class="form-label">Display Name</label>
+                        <input type="text" class="form-control" id="edit_username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="edit_email" disabled>
+                        <div class="form-text">Email cannot be changed. Contact a master admin to update login email.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_role" class="form-label">Role</label>
+                        <select class="form-select" id="edit_role" onchange="toggleEditTenantAssignment()">
+                            <option value="user">User</option>
+                            <option value="tenant_admin">Tenant Admin</option>
+                            <option value="master_admin">Master Admin</option>
+                        </select>
+                        <div class="form-text" id="roleHelpText"></div>
+                    </div>
+                    <div class="mb-3" id="editTenantAssignmentSection">
+                        <label class="form-label">Assign to Tenants</label>
+                        <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+                            {% for tenant in tenants %}
+                            <div class="form-check">
+                                <input class="form-check-input edit-tenant-check" type="checkbox" 
+                                       value="{{ tenant.id }}" id="edit_tenant_{{ tenant.id }}">
+                                <label class="form-check-label" for="edit_tenant_{{ tenant.id }}">
+                                    {{ tenant.name }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit_is_active">
+                            <label class="form-check-label" for="edit_is_active">Active</label>
+                        </div>
+                    </div>
+                </form>
+                <div id="editUserResult" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="editUserBtn" onclick="saveUserChanges()">
+                    <i class="bi bi-save me-2"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-key me-2"></i>Reset Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Reset password for user: <strong id="reset_username"></strong></p>
+                <form id="resetPasswordForm">
+                    <input type="hidden" id="reset_user_id">
+                    <div class="mb-3">
+                        <label for="reset_new_password" class="form-label">New Password *</label>
+                        <input type="password" class="form-control" id="reset_new_password" required minlength="6">
+                        <div class="form-text">Minimum 6 characters.</div>
+                    </div>
+                </form>
+                <div id="resetPasswordResult" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="resetPasswordBtn" onclick="saveResetPassword()">
+                    <i class="bi bi-key me-2"></i>Reset Password
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleTenantAssignment() {
+    const role = document.getElementById('new_role').value;
+    const section = document.getElementById('tenantAssignmentSection');
+    if (role === 'master_admin') {
+        section.style.display = 'none';
+    } else {
+        section.style.display = 'block';
+    }
+}
+
+function toggleEditTenantAssignment() {
+    const role = document.getElementById('edit_role').value;
+    const section = document.getElementById('editTenantAssignmentSection');
+    if (role === 'master_admin') {
+        section.style.display = 'none';
+    } else {
+        section.style.display = 'block';
+    }
+}
+
+async function saveNewUser() {
+    const email = document.getElementById('new_email').value.trim();
+    const name = document.getElementById('new_name').value.trim();
+    const password = document.getElementById('new_password').value;
+    const role = document.getElementById('new_role').value;
+    
+    if (!email || !password) {
+        showResult('addUserResult', 'Email and password are required', 'danger');
+        return;
+    }
+    
+    // Get selected tenants
+    const tenantChecks = document.querySelectorAll('.tenant-check:checked');
+    const tenants = Array.from(tenantChecks).map(cb => ({
+        tenant_id: parseInt(cb.value),
+        role: 'user'
+    }));
+    
+    const btn = document.getElementById('addUserBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+    
+    try {
+        const response = await fetch('/admin/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, password, role, tenants })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showResult('addUserResult', data.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showResult('addUserResult', data.detail || 'Failed to create user', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save me-2"></i>Create User';
+        }
+    } catch (error) {
+        showResult('addUserResult', 'Error: ' + error.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-2"></i>Create User';
+    }
+}
+
+async function editUser(userId) {
+    try {
+        const response = await fetch(`/admin/api/users/${userId}`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            showToast(data.detail || 'Failed to load user', 'error');
+            return;
+        }
+        
+        document.getElementById('edit_user_id').value = data.id;
+        document.getElementById('edit_username').value = data.username;
+        document.getElementById('edit_email').value = data.email || '';
+        document.getElementById('edit_role').value = data.role;
+        document.getElementById('edit_is_active').checked = data.is_active;
+        
+        // Set role help text
+        const roleHelp = document.getElementById('roleHelpText');
+        if (data.is_self) {
+            roleHelp.textContent = 'You cannot change your own role.';
+            document.getElementById('edit_role').disabled = true;
+            document.getElementById('edit_is_active').disabled = true;
+        } else {
+            roleHelp.textContent = '';
+            document.getElementById('edit_role').disabled = false;
+            document.getElementById('edit_is_active').disabled = false;
+        }
+        
+        // Set tenant checkboxes
+        document.querySelectorAll('.edit-tenant-check').forEach(cb => cb.checked = false);
+        if (data.tenants) {
+            data.tenants.forEach(ta => {
+                const cb = document.getElementById(`edit_tenant_${ta.tenant_id}`);
+                if (cb) cb.checked = true;
+            });
+        }
+        
+        toggleEditTenantAssignment();
+        
+        const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+        modal.show();
+    } catch (error) {
+        showToast('Error loading user: ' + error.message, 'error');
+    }
+}
+
+async function saveUserChanges() {
+    const userId = document.getElementById('edit_user_id').value;
+    const username = document.getElementById('edit_username').value.trim();
+    const role = document.getElementById('edit_role').value;
+    const isActive = document.getElementById('edit_is_active').checked;
+    
+    // Get selected tenants
+    const tenantChecks = document.querySelectorAll('.edit-tenant-check:checked');
+    const tenants = Array.from(tenantChecks).map(cb => ({
+        tenant_id: parseInt(cb.value),
+        role: 'user'
+    }));
+    
+    const btn = document.getElementById('editUserBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+    
+    try {
+        const response = await fetch(`/admin/api/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, role, is_active: isActive, tenants })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showResult('editUserResult', data.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showResult('editUserResult', data.detail || 'Failed to update user', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-save me-2"></i>Save Changes';
+        }
+    } catch (error) {
+        showResult('editUserResult', 'Error: ' + error.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-2"></i>Save Changes';
+    }
+}
+
+function resetPassword(userId, username) {
+    document.getElementById('reset_user_id').value = userId;
+    document.getElementById('reset_username').textContent = username;
+    document.getElementById('reset_new_password').value = '';
+    document.getElementById('resetPasswordResult').classList.add('d-none');
+    
+    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    modal.show();
+}
+
+async function saveResetPassword() {
+    const userId = document.getElementById('reset_user_id').value;
+    const newPassword = document.getElementById('reset_new_password').value;
+    
+    if (!newPassword || newPassword.length < 6) {
+        showResult('resetPasswordResult', 'Password must be at least 6 characters', 'warning');
+        return;
+    }
+    
+    const btn = document.getElementById('resetPasswordBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Resetting...';
+    
+    try {
+        const response = await fetch(`/admin/api/users/${userId}/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ new_password: newPassword })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showResult('resetPasswordResult', data.message, 'success');
+            setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide(), 1500);
+        } else {
+            showResult('resetPasswordResult', data.detail || 'Failed to reset password', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-key me-2"></i>Reset Password';
+        }
+    } catch (error) {
+        showResult('resetPasswordResult', 'Error: ' + error.message, 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-key me-2"></i>Reset Password';
+    }
+}
+
+async function deleteUser(userId, username) {
+    if (!confirm(`Are you sure you want to delete user '${username}'?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/api/users/${userId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast(data.detail || 'Failed to delete user', 'error');
+        }
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
+}
+
+function showResult(elementId, message, type) {
+    const el = document.getElementById(elementId);
+    el.className = `alert alert-${type}`;
+    el.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'x-circle'} me-2"></i>${message}`;
+    el.classList.remove('d-none');
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleTenantAssignment();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  therefore-report-generator:
+    build: .
+    image: therefore-report-generator:latest
+    container_name: therefore-report-generator
+    restart: unless-stopped
+    ports:
+      - "8088:8000"
+    environment:
+      - DEBUG=false
+      - SECRET_KEY=change-me-in-production
+      - DATABASE_URL=sqlite+aiosqlite:///app/data/app.db
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin
+      - ADMIN_EMAIL=admin@example.com
+      - SCHEDULER_INTERVAL_SECONDS=60
+      - TZ=Australia/Sydney
+    volumes:
+      - ./data:/app/data
+    networks:
+      - therefore-network
+
+networks:
+  therefore-network:
+    driver: bridge

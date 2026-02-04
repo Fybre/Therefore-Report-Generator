@@ -1,0 +1,179 @@
+{% extends "help/base.html" %}
+
+{% block help_content %}
+<div class="help-content">
+<h2>Tenants</h2>
+
+<p class="lead">Tenants represent Therefore instances that you want to monitor. This guide explains how to configure and manage tenants.</p>
+
+<h3>What is a Tenant?</h3>
+<p>A tenant is a connection to a Therefore instance. Each tenant contains:</p>
+<ul>
+    <li><strong>Name:</strong> A friendly identifier (e.g., "Production", "Test Environment")</li>
+    <li><strong>Base URL:</strong> The Therefore web address</li>
+    <li><strong>Auth Token:</strong> API credentials for accessing Therefore data</li>
+</ul>
+
+<h3>Creating a Tenant</h3>
+
+<h4>Step 1: Access Tenant Configuration</h4>
+<p>Navigate to <strong>Tenants</strong> → <strong>New Tenant</strong> or click the <strong>New Tenant</strong> button on the dashboard.</p>
+
+<h4>Step 2: Enter Basic Information</h4>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Field</th>
+            <th>Description</th>
+            <th>Required</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Tenant Name</td>
+            <td>A descriptive name for this Therefore instance</td>
+            <td>Yes</td>
+        </tr>
+        <tr>
+            <td>Description</td>
+            <td>Optional notes about this tenant</td>
+            <td>No</td>
+        </tr>
+        <tr>
+            <td>Base URL</td>
+            <td>The Therefore URL, e.g., <code>https://company.thereforeonline.com</code></td>
+            <td>To activate</td>
+        </tr>
+        <tr>
+            <td>Authorization Token</td>
+            <td>Your Therefore REST API auth token</td>
+            <td>To activate</td>
+        </tr>
+    </tbody>
+</table>
+
+<h4>Step 3: Test the Connection</h4>
+<p>Before activating the tenant, click <strong>Test Connection</strong> to verify:</p>
+<ul>
+    <li>The URL is reachable</li>
+    <li>The auth token is valid</li>
+    <li>API permissions are correct</li>
+</ul>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Note:</strong> Tenants are created as <strong>inactive</strong> until both Base URL and Auth Token are provided. You can save a partial configuration and complete it later.
+</div>
+
+<h3>Tenant Status</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Status</th>
+            <th>Icon</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><span class="badge bg-success">Active</span></td>
+            <td><i class="bi bi-check-circle text-success"></i></td>
+            <td>Tenant is fully configured and can be used for reports</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-secondary">Inactive</span></td>
+            <td><i class="bi bi-pause-circle text-secondary"></i></td>
+            <td>Tenant is disabled. Reports cannot use this tenant.</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-warning">Incomplete</span></td>
+            <td><i class="bi bi-exclamation-triangle text-warning"></i></td>
+            <td>Missing Base URL or Auth Token. Cannot be activated.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Workflow Processes</h3>
+<p>Each tenant can have multiple workflow processes. These are loaded from Therefore and cached for 1 hour.</p>
+
+<h4>Refreshing Process List</h4>
+<p>If you've added new processes in Therefore, click the <strong>refresh</strong> button next to the process dropdown when creating a report to update the cached list.</p>
+
+<h4>Understanding Processes</h4>
+<ul>
+    <li><strong>Process ID:</strong> The unique identifier in Therefore</li>
+    <li><strong>Process Name:</strong> The friendly name shown in dropdowns</li>
+    <li><strong>No Instances:</strong> Processes with 0 instances are still shown but noted</li>
+</ul>
+
+<h3>Tenant Administration</h3>
+
+<h4>Editing a Tenant</h4>
+<ol>
+    <li>Go to <strong>Tenants</strong> → <strong>Edit</strong></li>
+    <li>Update the required fields</li>
+    <li>Click <strong>Update Tenant</strong></li>
+</ol>
+
+<h4>Deactivating a Tenant</h4>
+<p>To temporarily disable a tenant:</p>
+<ol>
+    <li>Edit the tenant</li>
+    <li>Uncheck the <strong>Active</strong> checkbox</li>
+    <li>Save changes</li>
+</ol>
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    Reports for deactivated tenants will not run. You must reactivate the tenant or disable the reports.
+</div>
+
+<h4>Deleting a Tenant</h4>
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-octagon me-2"></i>
+    <strong>Warning:</strong> Deleting a tenant will also delete:
+    <ul class="mb-0">
+        <li>All reports for this tenant</li>
+        <li>All tenant assignments for users</li>
+        <li>This action cannot be undone!</li>
+    </ul>
+</div>
+
+<h3>Best Practices</h3>
+<ul>
+    <li><strong>Use descriptive names:</strong> Include environment (Prod/Test/Dev) in the tenant name</li>
+    <li><strong>Test before activating:</strong> Always test the connection before activating a tenant</li>
+    <li><strong>Secure your tokens:</strong> Auth tokens provide access to Therefore data - keep them secure</li>
+    <li><strong>Regular validation:</strong> Periodically test connections to ensure tokens haven't expired</li>
+</ul>
+
+<h3>Troubleshooting</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Issue</th>
+            <th>Solution</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>"Connection failed" error</td>
+            <td>Check Base URL format and network connectivity</td>
+        </tr>
+        <tr>
+            <td>"Unauthorized" error</td>
+            <td>Verify the Auth Token is valid and not expired</td>
+        </tr>
+        <tr>
+            <td>No processes shown</td>
+            <td>Click refresh button or check if user has workflow permissions in Therefore</td>
+        </tr>
+        <tr>
+            <td>Cannot activate tenant</td>
+            <td>Both Base URL and Auth Token are required to activate</td>
+        </tr>
+    </tbody>
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "help/base.html" %}
+
+{% block help_content %}
+<div class="help-content">
+<h2>Email Templates</h2>
+
+<p class="lead">Email templates define the format and content of report notifications. Learn how to customize templates using variables and HTML formatting.</p>
+
+<h3>What are Email Templates?</h3>
+<p>Email templates control:</p>
+<ul>
+    <li><strong>Subject line:</strong> Dynamic subject with variables</li>
+    <li><strong>Email body:</strong> HTML content with styling</li>
+    <li><strong>Data presentation:</strong> How workflow instances are displayed</li>
+    <li><strong>Branding:</strong> Company logos, colors, and styling</li>
+</ul>
+
+<h3>Template Variables</h3>
+<p>Use Jinja2 syntax to insert dynamic data:</p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Variable</th>
+            <th>Description</th>
+            <th>Example Output</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>{% raw %}{{ user.name }}{% endraw %}</code></td>
+            <td>Recipient's display name</td>
+            <td>John Smith</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}{{ user.email }}{% endraw %}</code></td>
+            <td>Recipient's email address</td>
+            <td>john@example.com</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}{{ report.name }}{% endraw %}</code></td>
+            <td>Name of the report</td>
+            <td>Weekly Tasks</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}{{ report.date }}{% endraw %}</code></td>
+            <td>Current date</td>
+            <td>2024-01-15</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}{{ instances }}{% endraw %}</code></td>
+            <td>List of workflow instances</td>
+            <td>Array of instance objects</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}{{ instances|length }}{% endraw %}</code></td>
+            <td>Number of instances</td>
+            <td>5</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}{{ tenant.name }}{% endraw %}</code></td>
+            <td>Tenant name</td>
+            <td>Production System</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Instance Object Properties</h3>
+<p>Each item in the <code>instances</code> array has these properties:</p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Property</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><code>{% raw %}instance.id{% endraw %}</code></td>
+            <td>Workflow instance ID</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}instance.process_name{% endraw %}</code></td>
+            <td>Name of the workflow process</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}instance.task_name{% endraw %}</code></td>
+            <td>Current task name</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}instance.task_due_date{% endraw %}</code></td>
+            <td>Task due date (if set)</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}instance.started_date{% endraw %}</code></td>
+            <td>When the instance started</td>
+        </tr>
+        <tr>
+            <td><code>{% raw %}instance.assigned_to{% endraw %}</code></td>
+            <td>User assigned to the task</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Template Examples</h3>
+
+<h4>Subject Template</h4>
+<pre><code>[{% raw %}{{ tenant.name }}{% endraw %}] You have {% raw %}{{ instances|length }}{% endraw %} pending task(s)</code></pre>
+
+<h4>Basic Body Template</h4>
+<pre><code>&lt;p&gt;Hello {% raw %}{{ user.name }}{% endraw %},&lt;/p&gt;
+
+&lt;p&gt;You have {% raw %}{{ instances|length }}{% endraw %} pending task(s) in {% raw %}{{ tenant.name }}{% endraw %}:&lt;/p&gt;
+
+&lt;ul&gt;
+{% raw %}{% for instance in instances %}{% endraw %}
+  &lt;li&gt;
+    &lt;strong&gt;{% raw %}{{ instance.process_name }}{% endraw %}&lt;/strong&gt; - {% raw %}{{ instance.task_name }}{% endraw %}
+    {% raw %}{% if instance.task_due_date %}{% endraw %}
+      &lt;br&gt;Due: {% raw %}{{ instance.task_due_date }}{% endraw %}
+    {% raw %}{% endif %}{% endraw %}
+  &lt;/li&gt;
+{% raw %}{% endfor %}{% endraw %}
+&lt;/ul&gt;</code></pre>
+
+<h3>Creating a Template</h3>
+
+<ol>
+    <li>Navigate to <strong>Email Templates</strong> → <strong>New Template</strong></li>
+    <li>Enter a <strong>Name</strong> for the template</li>
+    <li>Add an optional <strong>Description</strong></li>
+    <li>Write the <strong>Subject Template</strong> (plain text with variables)</li>
+    <li>Write the <strong>Body Template</strong> (HTML with variables)</li>
+    <li>Check <strong>Set as Default</strong> if this should be the default template</li>
+    <li>Save the template</li>
+</ol>
+
+<h3>Default Templates</h3>
+<p>The system provides default templates that can be reset to factory settings:</p>
+<ul>
+    <li><strong>All Instances:</strong> Shows all workflow instances in a table format</li>
+    <li><strong>Overdue Only:</strong> Focuses on overdue tasks</li>
+</ul>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>Reset to Defaults:</strong> This will delete all custom templates and restore the original defaults. This action cannot be undone!
+</div>
+
+<h3>HTML Styling Tips</h3>
+<ul>
+    <li>Use inline CSS for best email client compatibility</li>
+    <li>Avoid external stylesheets (many email clients block them)</li>
+    <li>Use tables for layout (more reliable than divs)</li>
+    <li>Test in multiple email clients (Outlook, Gmail, etc.)</li>
+    <li>Keep email width under 600px for mobile compatibility</li>
+</ul>
+
+<h3>Conditionals and Filters</h3>
+
+<h4>Show Content Conditionally</h4>
+<pre><code>{% raw %}{% if instances|length > 0 %}{% endraw %}
+  &lt;p&gt;You have pending tasks.&lt;/p&gt;
+{% raw %}{% else %}{% endraw %}
+  &lt;p&gt;No pending tasks!&lt;/p&gt;
+{% raw %}{% endif %}{% endraw %}</code></pre>
+
+<h4>Format Dates</h4>
+<pre><code>{% raw %}{{ instance.task_due_date|truncate(10, true, "") }}{% endraw %}</code></pre>
+
+<h4>Loop with Index</h4>
+<pre><code>{% raw %}{% for instance in instances %}{% endraw %}
+  {% raw %}{{ loop.index }}. {{ instance.process_name }}{% endraw %}
+{% raw %}{% endfor %}{% endraw %}</code></pre>
+
+<h3>Testing Templates</h3>
+<p>When you test a report, the selected template is used to generate the preview email. This allows you to see exactly how the email will look to recipients.</p>
+
+<h3>Best Practices</h3>
+<ul>
+    <li><strong>Keep it simple:</strong> Complex HTML may not render well in all email clients</li>
+    <li><strong>Test thoroughly:</strong> Send test emails to different email providers</li>
+    <li><strong>Use fallbacks:</strong> Provide text alternatives for important information</li>
+    <li><strong>Mobile-friendly:</strong> Ensure templates look good on mobile devices</li>
+    <li><strong>Clear CTAs:</strong> Include clear calls-to-action (links to Therefore)</li>
+</ul>
+
+<h3>Permissions</h3>
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    Only <strong>Master Admins</strong> can create, edit, or delete email templates. Tenant admins and users can view and select templates when creating reports.
+</div>
+</div>
+{% endblock %}

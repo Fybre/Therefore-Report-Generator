@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Help - Therefore Report Generator{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Sidebar -->
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-book me-2"></i>Help Topics
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="/help" class="list-group-item list-group-item-action {% if section == 'index' %}active{% endif %}">
+                    <i class="bi bi-house-door me-2"></i>Overview
+                </a>
+                <a href="/help/getting-started" class="list-group-item list-group-item-action {% if section == 'getting-started' %}active{% endif %}">
+                    <i class="bi bi-rocket-takeoff me-2"></i>Getting Started
+                </a>
+                <a href="/help/tenants" class="list-group-item list-group-item-action {% if section == 'tenants' %}active{% endif %}">
+                    <i class="bi bi-buildings me-2"></i>Tenants
+                </a>
+                <a href="/help/reports" class="list-group-item list-group-item-action {% if section == 'reports' %}active{% endif %}">
+                    <i class="bi bi-file-text me-2"></i>Reports
+                </a>
+                <a href="/help/templates" class="list-group-item list-group-item-action {% if section == 'templates' %}active{% endif %}">
+                    <i class="bi bi-envelope me-2"></i>Email Templates
+                </a>
+                <a href="/help/smtp" class="list-group-item list-group-item-action {% if section == 'smtp' %}active{% endif %}">
+                    <i class="bi bi-gear me-2"></i>SMTP Settings
+                </a>
+                {% if user.role == 'master_admin' %}
+                <a href="/help/users" class="list-group-item list-group-item-action {% if section == 'users' %}active{% endif %}">
+                    <i class="bi bi-people me-2"></i>User Management
+                </a>
+                {% endif %}
+                <a href="/help/roles" class="list-group-item list-group-item-action {% if section == 'roles' %}active{% endif %}">
+                    <i class="bi bi-shield-check me-2"></i>Roles & Permissions
+                </a>
+                <a href="/help/troubleshooting" class="list-group-item list-group-item-action {% if section == 'troubleshooting' %}active{% endif %}">
+                    <i class="bi bi-tools me-2"></i>Troubleshooting
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Content -->
+    <div class="col-md-9">
+        <div class="card">
+            <div class="card-body">
+                {% block help_content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.help-content h2 {
+    color: var(--secondary-color);
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+.help-content h3 {
+    color: var(--primary-color);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+.help-content h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+.help-content code {
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    color: #e83e8c;
+}
+.help-content pre code {
+    display: block;
+    padding: 1rem;
+    overflow-x: auto;
+}
+.help-content .alert code {
+    background-color: transparent;
+    padding: 0;
+}
+.help-content table {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+.help-content table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+.help-content .list-group-item.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,313 @@
+{% extends "help/base.html" %}
+
+{% block help_content %}
+<div class="help-content">
+<h2>Troubleshooting</h2>
+
+<p class="lead">Common issues and solutions for the Therefore Report Generator.</p>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    Can't find your issue? Check the <strong>Run Logs</strong> for detailed error messages, or contact your system administrator.
+</div>
+
+<h3>Login Issues</h3>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">"Invalid email or password"</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Cause:</strong> Incorrect login credentials.</p>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Verify you're using your <strong>email address</strong> (not username) to log in</li>
+            <li>Check for typos in the email address</li>
+            <li>Ensure Caps Lock is off</li>
+            <li>Click "Forgot password?" to reset your password</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Password reset email not received</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Causes:</strong></p>
+        <ul>
+            <li>SMTP not configured</li>
+            <li>Email in spam folder</li>
+            <li>User has no email address on file</li>
+        </ul>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Contact a Master Admin to verify your email address is set in your profile</li>
+            <li>Check spam/junk folders</li>
+            <li>Ask a Master Admin to reset your password manually</li>
+        </ul>
+    </div>
+</div>
+
+<h3>Tenant Issues</h3>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">"Connection failed" when testing tenant</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Causes:</strong></p>
+        <ul>
+            <li>Incorrect Base URL</li>
+            <li>Network connectivity issues</li>
+            <li>Therefore server down</li>
+        </ul>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Verify the URL format: <code>https://company.thereforeonline.com</code></li>
+            <li>Try accessing the URL in a browser</li>
+            <li>Check firewall settings</li>
+            <li>Verify the Therefore instance is accessible from the server</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">"Unauthorized" error</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Causes:</strong></p>
+        <ul>
+            <li>Invalid or expired auth token</li>
+            <li>Insufficient API permissions in Therefore</li>
+        </ul>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Generate a new auth token in Therefore</li>
+            <li>Verify the user associated with the token has workflow access</li>
+            <li>Check token hasn't expired</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Cannot activate tenant</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Cause:</strong> Missing required configuration.</p>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Both <strong>Base URL</strong> and <strong>Authorization Token</strong> are required</li>
+            <li>Test the connection successfully before activating</li>
+            <li>Save the tenant after entering both fields</li>
+        </ul>
+    </div>
+</div>
+
+<h3>Report Issues</h3>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">"No active tenants available" when creating report</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Causes:</strong></p>
+        <ul>
+            <li>No tenants exist</li>
+            <li>Tenants exist but are inactive</li>
+            <li>Tenant configuration is incomplete</li>
+        </ul>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Go to <strong>Tenants</strong> and create a tenant</li>
+            <li>Ensure the tenant has Base URL and Auth Token</li>
+            <li>Activate the tenant by checking the "Active" checkbox</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Report not running on schedule</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Causes:</strong></p>
+        <ul>
+            <li>Report is disabled</li>
+            <li>Tenant is inactive</li>
+            <li>Invalid cron expression</li>
+        </ul>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Check that the report's "Enabled" checkbox is checked</li>
+            <li>Verify the tenant is active</li>
+            <li>Validate the cron expression format (use a cron validator)</li>
+            <li>Check Run Logs for error messages</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">No workflow processes showing</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Causes:</strong></p>
+        <ul>
+            <li>Process cache is stale</li>
+            <li>No workflows in Therefore</li>
+            <li>User doesn't have workflow permissions</li>
+        </ul>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Click the <strong>refresh</strong> button next to the process dropdown</li>
+            <li>Verify workflows exist in Therefore</li>
+            <li>Check that the auth token user has workflow access in Therefore</li>
+        </ul>
+    </div>
+</div>
+
+<h3>Email Issues</h3>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Emails not being sent</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Causes:</strong></p>
+        <ul>
+            <li>SMTP not configured</li>
+            <li>SMTP configuration error</li>
+            <li>Report has no recipients</li>
+        </ul>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Go to <strong>SMTP Settings</strong> and add configuration</li>
+            <li>Test SMTP with the "Test SMTP" button</li>
+            <li>Check Run Logs for email errors</li>
+            <li>Verify workflow instances have assigned users</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">"Authentication failed" SMTP error</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Causes:</strong></p>
+        <ul>
+            <li>Wrong username or password</li>
+            <li>Using regular password instead of app password (Gmail)</li>
+        </ul>
+        <p><strong>Solutions:</strong></p>
+        <ul>
+            <li>Verify credentials</li>
+            <li>For Gmail: Generate an <a href="https://myaccount.google.com/apppasswords" target="_blank">App Password</a></li>
+            <li>Check if account requires 2FA</li>
+        </ul>
+    </div>
+</div>
+
+<h3>System Alerts</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Alert</th>
+            <th>Meaning</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><span class="badge bg-warning">No SMTP Server</span></td>
+            <td>No email configuration</td>
+            <td>Go to SMTP Settings and add configuration</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-info">Default BASE_URL</span></td>
+            <td>Using localhost (development mode)</td>
+            <td>Update BASE_URL for production use</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-warning">No Tenants</span></td>
+            <td>No Therefore connections configured</td>
+            <td>Create at least one tenant</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-warning">Incomplete Tenants</span></td>
+            <td>Tenants missing configuration</td>
+            <td>Add Base URL and Auth Token to tenants</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-danger">Default Admin Password</span></td>
+            <td>Using default password "admin"</td>
+            <td>Change password immediately for security</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Common Error Messages</h3>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">"Access denied"</h6>
+        <p class="card-text">You don't have permission to access this feature. Contact a Master Admin if you believe this is incorrect.</p>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">"Cannot delete yourself"</h6>
+        <p class="card-text">Users cannot delete their own account to prevent accidental lockout. Ask another Master Admin to delete your account.</p>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h6 class="card-title">"Email already exists"</h6>
+        <p class="card-text">Another user already has this email address. Each user must have a unique email.</p>
+    </div>
+</div>
+
+<h3>Where to Find Logs</h3>
+
+<h4>Run Logs</h4>
+<p>Go to <strong>Reports</strong> → <strong>Run Logs</strong> to see:</p>
+<ul>
+    <li>When reports ran</li>
+    <li>Success or failure status</li>
+    <li>Number of instances found</li>
+    <li>Emails sent or failed</li>
+    <li>Error messages</li>
+</ul>
+
+<h4>System Logs</h4>
+<p>Server logs are written to <code>data/log.txt</code> (if configured). These contain:</p>
+<ul>
+    <li>Application startup/shutdown</li>
+    <li>Database operations</li>
+    <li>SMTP communication</li>
+    <li>API errors</li>
+</ul>
+
+<h3>Getting Help</h3>
+
+<p>If you can't resolve an issue:</p>
+<ol>
+    <li>Check this troubleshooting guide thoroughly</li>
+    <li>Review the Run Logs for specific error messages</li>
+    <li>Check system alerts on the dashboard</li>
+    <li>Contact your Master Administrator with:
+        <ul>
+            <li>What you were trying to do</li>
+            <li>The exact error message</li>
+            <li>Steps you've already tried</li>
+        </ul>
+    </li>
+</ol>
+</div>
+{% endblock %}

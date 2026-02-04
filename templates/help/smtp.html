@@ -1,0 +1,203 @@
+{% extends "help/base.html" %}
+
+{% block help_content %}
+<div class="help-content">
+<h2>SMTP Settings</h2>
+
+<p class="lead">SMTP (Simple Mail Transfer Protocol) configuration is required for sending report emails. Learn how to set up email server settings.</p>
+
+<h3>Why SMTP is Required</h3>
+<p>The Therefore Report Generator needs SMTP settings to:</p>
+<ul>
+    <li>Send scheduled report emails to users</li>
+    <li>Deliver password reset notifications</li>
+    <li>Send test emails when configuring reports</li>
+    <li>Deliver admin notifications</li>
+</ul>
+
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    <strong>Important:</strong> Without SMTP configuration, reports will run but no emails will be sent. A warning will appear on the dashboard.
+</div>
+
+<h3>Creating an SMTP Configuration</h3>
+
+<h4>Required Fields</h4>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Field</th>
+            <th>Description</th>
+            <th>Example</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Configuration Name</td>
+            <td>Friendly name for this SMTP setup</td>
+            <td>"Company SMTP"</td>
+        </tr>
+        <tr>
+            <td>SMTP Server</td>
+            <td>Hostname or IP of mail server</td>
+            <td>smtp.gmail.com</td>
+        </tr>
+        <tr>
+            <td>Port</td>
+            <td>SMTP port number</td>
+            <td>587 (TLS) or 465 (SSL)</td>
+        </tr>
+        <tr>
+            <td>Username</td>
+            <td>Authentication username</td>
+            <td>reports@company.com</td>
+        </tr>
+        <tr>
+            <td>Password</td>
+            <td>Authentication password or app key</td>
+            <td>••••••••</td>
+        </tr>
+        <tr>
+            <td>Use TLS</td>
+            <td>Enable TLS encryption (recommended)</td>
+            <td>Checked</td>
+        </tr>
+        <tr>
+            <td>From Address</td>
+            <td>Sender email address</td>
+            <td>noreply@company.com</td>
+        </tr>
+        <tr>
+            <td>From Name</td>
+            <td>Display name for sender</td>
+            <td>"Therefore Reports"</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Common SMTP Providers</h3>
+
+<h4>Gmail / Google Workspace</h4>
+<table class="table table-sm">
+    <tr><td><strong>Server:</strong></td><td>smtp.gmail.com</td></tr>
+    <tr><td><strong>Port:</strong></td><td>587</td></tr>
+    <tr><td><strong>TLS:</strong></td><td>Enabled</td></tr>
+    <tr><td><strong>Username:</strong></td><td>Your Gmail address</td></tr>
+    <tr><td><strong>Password:</strong></td><td>App-specific password (not your Gmail password)</td></tr>
+</table>
+
+<h4>Microsoft 365 / Outlook</h4>
+<table class="table table-sm">
+    <tr><td><strong>Server:</strong></td><td>smtp.office365.com</td></tr>
+    <tr><td><strong>Port:</strong></td><td>587</td></tr>
+    <tr><td><strong>TLS:</strong></td><td>Enabled</td></tr>
+    <tr><td><strong>Username:</strong></td><td>Your Office 365 email</td></tr>
+    <tr><td><strong>Password:</strong></td><td>Your Office 365 password</td></tr>
+</table>
+
+<h4>Internal Exchange Server</h4>
+<table class="table table-sm">
+    <tr><td><strong>Server:</strong></td><td>mail.company.local</td></tr>
+    <tr><td><strong>Port:</strong></td><td>25 or 587</td></tr>
+    <tr><td><strong>TLS:</strong></td><td>Depends on configuration</td></tr>
+    <tr><td><strong>Username:</strong></td><td>Domain\Username or email</td></tr>
+</table>
+
+<h3>Testing SMTP Configuration</h3>
+<p>Always test your SMTP settings before saving:</p>
+<ol>
+    <li>Fill in all required fields</li>
+    <li>Click <strong>Test SMTP</strong></li>
+    <li>Enter a test email address</li>
+    <li>Click <strong>Send Test Email</strong></li>
+    <li>Check for success message or error details</li>
+</ol>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    The test email will include diagnostic information about the connection attempt, useful for troubleshooting.
+</div>
+
+<h3>Multiple SMTP Configurations</h3>
+<p>You can configure multiple SMTP servers:</p>
+<ul>
+    <li>One configuration can be set as <strong>Default</strong></li>
+    <li>The default is used unless specified otherwise</li>
+    <li>Useful for different departments or tenants</li>
+</ul>
+
+<h3>SMTP Status</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Status</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><span class="badge bg-success">Active</span></td>
+            <td>Configuration is enabled and can be used</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-secondary">Inactive</span></td>
+            <td>Configuration is disabled and won't be used</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-primary">Default</span></td>
+            <td>This configuration is used by default for new reports</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Security Considerations</h3>
+<ul>
+    <li><strong>Use TLS:</strong> Always enable TLS when available</li>
+    <li><strong>App Passwords:</strong> For Gmail, use app-specific passwords, not your main password</li>
+    <li><strong>Dedicated Account:</strong> Use a dedicated email account for sending reports</li>
+    <li><strong>Rate Limits:</strong> Be aware of your SMTP provider's sending limits</li>
+</ul>
+
+<h3>Troubleshooting</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Issue</th>
+            <th>Solution</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>"Authentication failed"</td>
+            <td>Check username and password. For Gmail, ensure using App Password.</td>
+        </tr>
+        <tr>
+            <td>"Connection refused"</td>
+            <td>Verify server address and port. Check firewall settings.</td>
+        </tr>
+        <tr>
+            <td>"TLS required"</td>
+            <td>Enable the TLS option in configuration.</td>
+        </tr>
+        <tr>
+            <td>Emails not being received</td>
+            <td>Check spam folders. Verify "From" address is allowed by your domain.</td>
+        </tr>
+        <tr>
+            <td>"Rate limit exceeded"</td>
+            <td>Reduce report frequency or use SMTP with higher limits.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Best Practices</h3>
+<ul>
+    <li><strong>Dedicated sender:</strong> Use noreply@ or reports@ address</li>
+    <li><strong>Test regularly:</strong> SMTP credentials can expire or change</li>
+    <li><strong>Monitor bounces:</strong> Watch for undeliverable email notifications</li>
+    <li><strong>Secure storage:</strong> SMTP passwords are stored encrypted in the database</li>
+</ul>
+</div>
+{% endblock %}

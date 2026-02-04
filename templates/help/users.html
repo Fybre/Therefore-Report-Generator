@@ -1,0 +1,230 @@
+{% extends "help/base.html" %}
+
+{% block help_content %}
+<div class="help-content">
+<h2>User Management</h2>
+
+<p class="lead">User management allows master administrators to create accounts, assign roles, and manage tenant access. Learn how to administer users in the system.</p>
+
+<div class="alert alert-warning">
+    <i class="bi bi-shield-lock me-2"></i>
+    <strong>Master Admin Only:</strong> User management is restricted to master administrators. Tenant admins and regular users cannot access these functions.
+</div>
+
+<h3>Accessing User Management</h3>
+<p>Navigate to <strong>User Admin</strong> from the sidebar menu or user dropdown.</p>
+
+<h3>User List</h3>
+<p>The User Admin page displays all system users with:</p>
+<ul>
+    <li>Display name and email</li>
+    <li>Role (Master Admin, Tenant Admin, User)</li>
+    <li>Status (Active/Inactive)</li>
+    <li>Assigned tenants</li>
+    <li>Action buttons (Edit, Reset Password, Delete)</li>
+</ul>
+
+<h3>Creating a New User</h3>
+
+<ol>
+    <li>Click <strong>Add User</strong> button</li>
+    <li>Fill in the required information:
+        <ul>
+            <li><strong>Email:</strong> The user's email address (used for login)</li>
+            <li><strong>Display Name:</strong> Full name shown in the interface</li>
+            <li><strong>Password:</strong> Initial password (minimum 6 characters)</li>
+            <li><strong>Role:</strong> Select appropriate role</li>
+        </ul>
+    </li>
+    <li>For Tenant Admin or User roles, assign tenants:
+        <ul>
+            <li>Check the tenants the user should access</li>
+            <li>Users will only see reports for their assigned tenants</li>
+        </ul>
+    </li>
+    <li>Click <strong>Create User</strong></li>
+</ol>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    If no display name is provided, it will be auto-generated from the email address (part before @).
+</div>
+
+<h3>User Roles</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Role</th>
+            <th>Permissions</th>
+            <th>Use Case</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><span class="badge bg-danger">Master Admin</span></td>
+            <td>Full system access</td>
+            <td>System administrators, IT staff</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-warning">Tenant Admin</span></td>
+            <td>Manage assigned tenants and their reports</td>
+            <td>Department managers, team leads</td>
+        </tr>
+        <tr>
+            <td><span class="badge bg-secondary">User</span></td>
+            <td>View-only access to assigned tenants</td>
+            <td>Regular staff, report recipients</td>
+        </tr>
+    </tbody>
+</table>
+
+<h4>Role Permissions Detail</h4>
+
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th>Function</th>
+            <th>Master Admin</th>
+            <th>Tenant Admin</th>
+            <th>User</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Manage Users</td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+        </tr>
+        <tr>
+            <td>Manage SMTP</td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+        </tr>
+        <tr>
+            <td>Manage Templates</td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+        </tr>
+        <tr>
+            <td>Manage All Tenants</td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+        </tr>
+        <tr>
+            <td>Manage Assigned Tenants</td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+        </tr>
+        <tr>
+            <td>Create Reports</td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-check-lg text-success"></i> (assigned only)</td>
+            <td><i class="bi bi-x-lg text-danger"></i></td>
+        </tr>
+        <tr>
+            <td>View Reports</td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-check-lg text-success"></i> (assigned only)</td>
+            <td><i class="bi bi-check-lg text-success"></i> (assigned only)</td>
+        </tr>
+        <tr>
+            <td>Edit Own Profile</td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+            <td><i class="bi bi-check-lg text-success"></i></td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>Editing a User</h3>
+<ol>
+    <li>Click the <strong>Edit</strong> (pencil) icon for the user</li>
+    <li>Update the fields:
+        <ul>
+            <li><strong>Display Name:</strong> Can be changed anytime</li>
+            <li><strong>Email:</strong> Cannot be changed (it's the login ID)</li>
+            <li><strong>Role:</strong> Can be changed (except for your own account)</li>
+            <li><strong>Tenants:</strong> Add or remove tenant assignments</li>
+            <li><strong>Active:</strong> Enable or disable the account</li>
+        </ul>
+    </li>
+    <li>Click <strong>Save Changes</strong></li>
+</ol>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    You cannot change your own role or deactivate your own account to prevent lockout.
+</div>
+
+<h3>Resetting Passwords</h3>
+<p>Master admins can reset passwords for any user:</p>
+<ol>
+    <li>Click the <strong>Reset Password</strong> (key) icon</li>
+    <li>Enter a new password (minimum 6 characters)</li>
+    <li>Confirm the reset</li>
+</ol>
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    The user will not be automatically notified of the password change. You must communicate the new password to them securely.
+</div>
+
+<h3>Deleting Users</h3>
+<p>To permanently remove a user:</p>
+<ol>
+    <li>Click the <strong>Delete</strong> (trash) icon</li>
+    <li>Confirm the deletion</li>
+</ol>
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-octagon me-2"></i>
+    <strong>Warning:</strong> Deleted users cannot be recovered. Their reports and activity logs remain in the system.
+</div>
+
+<h3>Tenant Assignments</h3>
+
+<h4>For Tenant Admins</h4>
+<p>Tenant admins can:</p>
+<ul>
+    <li>Manage tenant configuration</li>
+    <li>Create and edit reports for assigned tenants</li>
+    <li>View run logs for their tenants</li>
+    <li>Activate/deactivate their tenants (if fully configured)</li>
+</ul>
+
+<h4>For Users</h4>
+<p>Regular users can:</p>
+<ul>
+    <li>View reports for assigned tenants</li>
+    <li>Run manual report tests</li>
+    <li>View their own profile</li>
+    <li>Receive scheduled report emails</li>
+</ul>
+
+<h3>Best Practices</h3>
+<ul>
+    <li><strong>Principle of least privilege:</strong> Give users the minimum role needed</li>
+    <li><strong>Regular review:</strong> Periodically audit user access and roles</li>
+    <li><strong>Disable, don't delete:</strong> Deactivate users who leave instead of deleting</li>
+    <li><strong>Strong passwords:</strong> Enforce complex passwords</li>
+    <li><strong>Documentation:</strong> Keep records of who has admin access</li>
+</ul>
+
+<h3>Self-Service Password Reset</h3>
+<p>Users can reset their own passwords:</p>
+<ol>
+    <li>Click "Forgot password?" on the login page</li>
+    <li>Enter their email address</li>
+    <li>Check email for reset link (requires SMTP configuration)</li>
+    <li>Follow link to create new password</li>
+</ol>
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    Password reset only works if the user has an email address configured and SMTP is set up.
+</div>
+</div>
+{% endblock %}
