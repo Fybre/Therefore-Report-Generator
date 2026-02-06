@@ -159,7 +159,14 @@ def is_tenant_admin(user: dict, tenant_id: int) -> bool:
     if user.get('role') == 'master_admin':
         return True
     
-    # Check if user is tenant admin for this tenant
+    # Check if user has tenant_admin role globally and is assigned to this tenant
+    if user.get('role') == 'tenant_admin':
+        for user_tenant in user.get('tenants', []):
+            if user_tenant.get('tenant_id') == tenant_id:
+                return True
+        return False
+    
+    # Check if user is tenant admin for this tenant (specific assignment)
     for user_tenant in user.get('tenants', []):
         if user_tenant.get('tenant_id') == tenant_id:
             if user_tenant.get('role') in ['master_admin', 'tenant_admin']:

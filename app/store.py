@@ -172,7 +172,7 @@ def get_tenant_by_id(tenant_id: int) -> Optional[Dict]:
 
 
 def create_tenant(name: str, base_url: str = None, auth_token: str = None, description: str = None, 
-                  is_active: bool = True, created_by: int = None) -> Dict:
+                  is_active: bool = True, is_single_instance: bool = False, created_by: int = None) -> Dict:
     """Create a new tenant.
     
     If base_url or auth_token is missing, the tenant will be created as inactive.
@@ -192,6 +192,7 @@ def create_tenant(name: str, base_url: str = None, auth_token: str = None, descr
         'base_url': base_url,
         'auth_token': auth_token,
         'is_active': is_active,
+        'is_single_instance': is_single_instance,
         'created_by': created_by,
         'created_at': datetime.utcnow().isoformat(),
         'updated_at': datetime.utcnow().isoformat()

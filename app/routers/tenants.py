@@ -84,6 +84,7 @@ async def create_tenant_api(
         base_url=tenant.base_url,
         auth_token=tenant.auth_token,
         is_active=tenant.is_active,
+        is_single_instance=tenant.is_single_instance,
         created_by=current_user['id']
     )
     
@@ -254,6 +255,7 @@ async def create_tenant_form(
         base_url=form.get("base_url"),
         auth_token=form.get("auth_token"),
         is_active=form.get("is_active") == "on",
+        is_single_instance=form.get("is_single_instance") == "on",
         created_by=current_user['id']
     )
     
@@ -277,6 +279,7 @@ async def update_tenant_form(
     form = await request.form()
     
     is_active = form.get("is_active") == "on"
+    is_single_instance = form.get("is_single_instance") == "on"
     base_url = form.get("base_url")
     auth_token = form.get("auth_token")
     
@@ -298,7 +301,8 @@ async def update_tenant_form(
                 'description': form.get("description"),
                 'base_url': base_url,
                 'auth_token': auth_token,
-                'is_active': is_active
+                'is_active': is_active,
+                'is_single_instance': is_single_instance
             }
             
             return templates.TemplateResponse("tenants/form.html", {
@@ -312,7 +316,8 @@ async def update_tenant_form(
         'name': form.get("name"),
         'description': form.get("description"),
         'base_url': base_url,
-        'is_active': is_active
+        'is_active': is_active,
+        'is_single_instance': is_single_instance
     }
     
     if auth_token:
@@ -350,7 +355,8 @@ async def test_existing_tenant_connection(
     client = ThereforeClient(
         base_url=tenant['base_url'],
         tenant_name=tenant['name'],
-        auth_token=tenant['auth_token']
+        auth_token=tenant['auth_token'],
+        is_single_instance=tenant.get('is_single_instance', False)
     )
     
     try:
@@ -369,6 +375,7 @@ async def test_new_tenant_connection(
     base_url = data.get('base_url')
     tenant_name = data.get('tenant_name') or data.get('name')
     auth_token = data.get('auth_token')
+    is_single_instance = data.get('is_single_instance', False)
     
     if not base_url or not tenant_name or not auth_token:
         raise HTTPException(
@@ -379,7 +386,8 @@ async def test_new_tenant_connection(
     client = ThereforeClient(
         base_url=base_url,
         tenant_name=tenant_name,
-        auth_token=auth_token
+        auth_token=auth_token,
+        is_single_instance=is_single_instance
     )
     
     try:
@@ -410,7 +418,8 @@ async def get_tenant_workflow_processes(
     client = ThereforeClient(
         base_url=tenant['base_url'],
         tenant_name=tenant['name'],
-        auth_token=tenant['auth_token']
+        auth_token=tenant['auth_token'],
+        is_single_instance=tenant.get('is_single_instance', False)
     )
     
     try:

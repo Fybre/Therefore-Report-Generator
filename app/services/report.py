@@ -80,7 +80,8 @@ class ReportProcessor:
         therefore_client = ThereforeClient(
             base_url=tenant['base_url'],
             tenant_name=tenant['name'],
-            auth_token=tenant['auth_token']
+            auth_token=tenant['auth_token'],
+            is_single_instance=tenant.get('is_single_instance', False)
         )
         
         email_service = EmailService(
@@ -328,7 +329,8 @@ class ReportProcessor:
         therefore_client = ThereforeClient(
             base_url=tenant['base_url'],
             tenant_name=tenant['name'],
-            auth_token=tenant['auth_token']
+            auth_token=tenant['auth_token'],
+            is_single_instance=tenant.get('is_single_instance', False)
         )
         
         template_renderer = EmailTemplateRenderer(
@@ -557,7 +559,8 @@ class ReportProcessor:
         therefore_client = ThereforeClient(
             base_url=tenant['base_url'],
             tenant_name=tenant['name'],
-            auth_token=tenant['auth_token']
+            auth_token=tenant['auth_token'],
+            is_single_instance=tenant.get('is_single_instance', False)
         )
         
         try:

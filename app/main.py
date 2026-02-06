@@ -283,7 +283,7 @@ def create_app() -> FastAPI:
             # Master admin sees all system alerts
             system_alerts = get_system_alerts()
         else:
-            # Tenant admin only sees alerts for their incomplete assigned tenants
+            # Tenant admin sees alerts for their assigned tenants
             incomplete_tenants = [t for t in accessible_tenants if not t.get('base_url') or not t.get('auth_token')]
             if incomplete_tenants:
                 system_alerts.append({
@@ -292,6 +292,17 @@ def create_app() -> FastAPI:
                     "message": f"{', '.join(t['name'] for t in incomplete_tenants[:3])}{'...' if len(incomplete_tenants) > 3 else ''} need endpoint and/or auth token configuration.",
                     "link": "/tenants",
                     "link_text": "Configure Tenants"
+                })
+            
+            # Check for inactive tenants
+            inactive_tenants = [t for t in accessible_tenants if not t.get('is_active', True)]
+            if inactive_tenants:
+                system_alerts.append({
+                    "level": "info",
+                    "title": f"{len(inactive_tenants)} Inactive Tenant(s)",
+                    "message": f"{', '.join(t['name'] for t in inactive_tenants[:3])}{'...' if len(inactive_tenants) > 3 else ''} are inactive.",
+                    "link": "/tenants",
+                    "link_text": "View Tenants"
                 })
         
         return templates.TemplateResponse("dashboard.html", {

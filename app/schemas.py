@@ -21,6 +21,7 @@ class TenantBase(BaseModel):
     description: Optional[str] = None
     base_url: Optional[str] = None
     is_active: bool = True
+    is_single_instance: bool = False
 
 
 class EmailTemplateBase(BaseModel):

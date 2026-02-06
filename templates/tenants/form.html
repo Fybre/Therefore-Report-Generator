@@ -24,7 +24,7 @@
                     <label for="name" class="form-label">Tenant Name *</label>
                     <input type="text" class="form-control" id="name" name="name" 
                            value="{{ tenant.name if tenant else '' }}" required>
-                    <div class="form-text">A friendly name for this Therefore instance</div>
+                    <div class="form-text">Tenant name for this Therefore instance</div>
                 </div>
                 
                 <div class="col-md-6 mb-3">
@@ -55,6 +55,17 @@
                     <label class="form-check-label" for="is_active">
                         Active
                     </label>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="is_single_instance" name="is_single_instance" 
+                           {{ 'checked' if tenant and tenant.is_single_instance }}>
+                    <label class="form-check-label" for="is_single_instance">
+                        Single Instance (On-Premises)
+                    </label>
+                    <div class="form-text">Check this for on-premises single-instance servers. The TenantName header will not be sent in API requests.</div>
                 </div>
             </div>
             
@@ -126,13 +137,16 @@ async function testConnection() {
             return;
         }
         
+        const isSingleInstance = document.getElementById('is_single_instance').checked;
+        
         const response = await fetch('/tenants/api/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 base_url: baseUrl, 
                 tenant_name: name, 
-                auth_token: authToken 
+                auth_token: authToken,
+                is_single_instance: isSingleInstance
             })
         });
         {% endif %}

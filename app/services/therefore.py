@@ -330,28 +330,33 @@ class ThereforeClient:
     # Default workflow flag for queries - use RUNNING_INSTANCES for consistent behavior
     DEFAULT_WORKFLOW_FLAG = WorkflowFlags.RUNNING_INSTANCES
     
-    def __init__(self, base_url: str, tenant_name: str, auth_token: str):
+    def __init__(self, base_url: str, tenant_name: str, auth_token: str, is_single_instance: bool = False):
         """Initialize the Therefore client.
         
         Args:
             base_url: The Therefore instance base URL (e.g., https://company.thereforeonline.com)
             tenant_name: The tenant name
             auth_token: The authorization token
+            is_single_instance: If True, the TenantName header will not be sent (for single-instance on-prem servers)
         """
         self.base_url = base_url.rstrip('/')
         self.api_base = f"{self.base_url}/theservice/v0001/restun"
         self.tenant_name = tenant_name
         self.auth_token = auth_token
+        self.is_single_instance = is_single_instance
         self.client = httpx.AsyncClient(timeout=300.0)
     
     def _get_headers(self) -> Dict[str, str]:
         """Get request headers with authentication."""
-        return {
-            "TenantName": self.tenant_name,
+        headers = {
             "Authorization": self.auth_token,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
+        # Only include TenantName header for multi-tenant (cloud) instances
+        if not self.is_single_instance:
+            headers["TenantName"] = self.tenant_name
+        return headers
     
     async def _post(self, endpoint: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Make a POST request to the API."""
