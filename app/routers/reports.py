@@ -304,6 +304,9 @@ async def create_report_form(
         except:
             processes = []
 
+    # Check if this is an error report
+    is_error_report = form.get("is_error_report") == "on"
+    
     create_report(
         name=form.get("name"),
         tenant_id=tenant_id,
@@ -315,7 +318,10 @@ async def create_report_form(
         send_all_to_admin=form.get("send_all_to_admin") == "on",
         admin_email=form.get("admin_email"),
         sort_order=form.get("sort_order", "task_due_date"),
-        created_by=current_user['id']
+        created_by=current_user['id'],
+        is_error_report=is_error_report,
+        error_to_email=form.get("error_to_email") if is_error_report else None,
+        error_cc_email=form.get("error_cc_email") if is_error_report else None
     )
     
     return RedirectResponse(url="/reports", status_code=302)
@@ -350,6 +356,9 @@ async def update_report_form(
         except:
             processes = []
 
+    # Check if this is an error report
+    is_error_report = form.get("is_error_report") == "on"
+    
     updates = {
         'name': form.get("name"),
         'description': form.get("description"),
@@ -359,7 +368,10 @@ async def update_report_form(
         'enabled': form.get("enabled") == "on",
         'send_all_to_admin': form.get("send_all_to_admin") == "on",
         'admin_email': form.get("admin_email"),
-        'sort_order': form.get("sort_order", "task_due_date")
+        'sort_order': form.get("sort_order", "task_due_date"),
+        'is_error_report': is_error_report,
+        'error_to_email': form.get("error_to_email") if is_error_report else None,
+        'error_cc_email': form.get("error_cc_email") if is_error_report else None
     }
     
     update_report(report_id, updates)
@@ -425,9 +437,15 @@ async def reports_logs_page(
         except ValueError:
             tenant_id_int = None
     
+    # Determine accessible tenants
+    if current_user.get('role') == 'master_admin':
+        accessible_tenant_ids = {t['id'] for t in get_tenants()}
+    else:
+        accessible_tenant_ids = {ut['tenant_id'] for ut in current_user.get('tenants', [])}
+    
     # Filter by tenant if specified and user has access
     if tenant_id_int:
-        if not has_tenant_access(current_user, tenant_id_int):
+        if tenant_id_int not in accessible_tenant_ids:
             raise HTTPException(status_code=403, detail="Access denied")
     
     # Normalize empty strings to None
@@ -443,6 +461,10 @@ async def reports_logs_page(
         date_to=date_to_filter,
         limit=500
     )
+    
+    # Filter logs to only show accessible tenants for non-master admins
+    if current_user.get('role') != 'master_admin':
+        logs = [log for log in logs if log.get('report_tenant_id') in accessible_tenant_ids]
     
     # Get tenants for filter dropdown
     if current_user.get('role') == 'master_admin':

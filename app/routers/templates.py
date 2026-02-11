@@ -13,7 +13,7 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 
 @router.get("/api/templates")
 async def list_templates_api(
-    current_user: dict = Depends(require_any_user),
+    _current_user: dict = Depends(require_any_user),
 ):
     """List all templates (API)."""
     templates = get_templates()
@@ -33,7 +33,7 @@ async def list_templates_api(
 @router.get("/api/templates/{template_id}")
 async def get_template_api(
     template_id: int,
-    current_user: dict = Depends(require_any_user),
+    _current_user: dict = Depends(require_any_user),
 ):
     """Get template details (API)."""
     template = get_template_by_id(template_id)
@@ -46,7 +46,7 @@ async def get_template_api(
 @router.post("/api/templates")
 async def create_template_api(
     template_data: dict,
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Create a new template (API)."""
     new_template = create_template(
@@ -69,7 +69,7 @@ async def create_template_api(
 async def update_template_api(
     template_id: int,
     template_data: dict,
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Update a template (API)."""
     template = get_template_by_id(template_id)
@@ -83,7 +83,7 @@ async def update_template_api(
 @router.delete("/api/templates/{template_id}")
 async def delete_template_api(
     template_id: int,
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Delete a template (API)."""
     if delete_template(template_id):
@@ -96,7 +96,7 @@ async def delete_template_api(
 @router.get("", response_class=HTMLResponse)
 async def templates_page(
     request: Request,
-    current_user: dict = Depends(require_any_user),
+    _current_user: dict = Depends(require_any_user),
 ):
     """Templates list page."""
     from fastapi.templating import Jinja2Templates
@@ -106,7 +106,7 @@ async def templates_page(
     
     return templates_jinja.TemplateResponse("templates/list.html", {
         "request": request,
-        "user": current_user,
+        "user": _current_user,
         "templates": templates_list
     })
 
@@ -114,7 +114,7 @@ async def templates_page(
 @router.get("/new", response_class=HTMLResponse)
 async def new_template_page(
     request: Request,
-    current_user: dict = Depends(require_master_admin)
+    _current_user: dict = Depends(require_master_admin)
 ):
     """New template form."""
     from fastapi.templating import Jinja2Templates
@@ -122,7 +122,7 @@ async def new_template_page(
     
     return templates.TemplateResponse("templates/form.html", {
         "request": request,
-        "user": current_user,
+        "user": _current_user,
         "template": None
     })
 
@@ -131,7 +131,7 @@ async def new_template_page(
 async def edit_template_page(
     template_id: int,
     request: Request,
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Edit template form."""
     from fastapi.templating import Jinja2Templates
@@ -143,14 +143,14 @@ async def edit_template_page(
     
     return templates.TemplateResponse("templates/form.html", {
         "request": request,
-        "user": current_user,
+        "user": _current_user,
         "template": template
     })
 
 
 @router.post("/init-defaults")
 async def init_default_templates(
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Initialize default templates (HTML form)."""
     default_templates = create_default_templates()
@@ -169,7 +169,7 @@ async def init_default_templates(
             subject_template=subject,
             body_template=body,
             is_default=(key == "all_instances"),
-            created_by=current_user['id']
+            created_by=_current_user['id']
         )
         created_count += 1
     
@@ -181,7 +181,7 @@ async def init_default_templates(
 
 @router.post("/api/reset-defaults")
 async def reset_default_templates_api(
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Delete all templates and recreate default templates (API)."""
     from app.store import delete_template, get_templates
@@ -204,7 +204,7 @@ async def reset_default_templates_api(
             subject_template=subject,
             body_template=body,
             is_default=(key == "all_instances"),
-            created_by=current_user['id']
+            created_by=_current_user['id']
         )
         created_count += 1
     
@@ -218,7 +218,7 @@ async def reset_default_templates_api(
 
 @router.post("/reset-defaults")
 async def reset_default_templates(
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Delete all templates and recreate default templates (HTML form)."""
     from app.store import delete_template, get_templates
@@ -241,7 +241,7 @@ async def reset_default_templates(
             subject_template=subject,
             body_template=body,
             is_default=(key == "all_instances"),
-            created_by=current_user['id']
+            created_by=_current_user['id']
         )
         created_count += 1
     
@@ -254,7 +254,7 @@ async def reset_default_templates(
 @router.post("", response_class=HTMLResponse)
 async def create_template_form(
     request: Request,
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Create template from form."""
     form = await request.form()
@@ -275,7 +275,7 @@ async def create_template_form(
 async def update_template_form(
     template_id: int,
     request: Request,
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Update template from form."""
     template = get_template_by_id(template_id)
@@ -299,7 +299,7 @@ async def update_template_form(
 @router.post("/{template_id}/delete", response_class=HTMLResponse)
 async def delete_template_form(
     template_id: int,
-    current_user: dict = Depends(require_master_admin),
+    _current_user: dict = Depends(require_master_admin),
 ):
     """Delete template from form."""
     delete_template(template_id)

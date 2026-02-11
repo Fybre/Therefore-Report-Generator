@@ -7,7 +7,7 @@ from app.store import (
     get_report_by_id, get_tenant_by_id, get_template_by_id, get_default_smtp_config,
     update_report, add_run_log
 )
-from app.services.therefore import ThereforeClient, InstanceForUser, sort_instances, InstanceSortOrder
+from app.services.therefore import ThereforeClient, InstanceForUser, sort_instances, InstanceSortOrder, WorkflowFlags
 from app.services.email import EmailTemplateRenderer, EmailService, EmailMessage
 
 
@@ -50,6 +50,10 @@ class ReportProcessor:
         if not report.get('enabled', True):
             self.messages.append(f"Report {report['name']} is disabled")
             return False
+        
+        # Route error reports to dedicated handler
+        if report.get('is_error_report'):
+            return await self._process_error_report(report, progress_callback)
         
         # Get tenant
         tenant = get_tenant_by_id(report['tenant_id'])
@@ -261,6 +265,164 @@ class ReportProcessor:
         
         update_report(report['id'], updates)
 
+    async def _process_error_report(
+        self,
+        report: dict,
+        progress_callback: Optional[Callable] = None
+    ) -> bool:
+        """Process an error workflow report.
+        
+        Queries for workflow instances in error state and sends a single
+        email to configured recipients.
+        
+        Args:
+            report: The error report configuration
+            progress_callback: Optional callback for progress updates
+            
+        Returns:
+            True if successful
+        """
+        report_id = report['id']
+        
+        # Get tenant
+        tenant = get_tenant_by_id(report['tenant_id'])
+        if not tenant or not tenant.get('is_active', True):
+            self.messages.append(f"Tenant for report '{report['name']}' not found or inactive")
+            return False
+        
+        # Get template
+        template = get_template_by_id(report['template_id'])
+        if not template:
+            self.messages.append(f"Template for report {report['name']} not found")
+            return False
+        
+        # Get SMTP config
+        smtp_config = get_default_smtp_config()
+        if not smtp_config:
+            self.messages.append("No default SMTP configuration found")
+            return False
+        
+        # Validate error report recipient
+        error_to = report.get('error_to_email', '').strip()
+        if not error_to:
+            self.messages.append("Error report has no recipient configured (error_to_email)")
+            return False
+        
+        print(f"[REPORT] Processing ERROR report '{report['name']}'")
+        print(f"[REPORT] Tenant: {tenant['name']}")
+        print(f"[REPORT] Recipient: {error_to}")
+        
+        therefore_client = ThereforeClient(
+            base_url=tenant['base_url'],
+            tenant_name=tenant['name'],
+            auth_token=tenant['auth_token'],
+            is_single_instance=tenant.get('is_single_instance', False)
+        )
+        
+        email_service = EmailService(
+            server=smtp_config['server'],
+            port=smtp_config['port'],
+            username=smtp_config['username'],
+            password=smtp_config['password'],
+            use_tls=smtp_config.get('use_tls', True),
+            from_address=smtp_config['from_address'],
+            from_name=smtp_config.get('from_name')
+        )
+        
+        template_renderer = EmailTemplateRenderer(
+            subject_template=template['subject_template'],
+            body_template=template['body_template']
+        )
+        
+        try:
+            # Step 1: Query error workflow instances
+            if progress_callback:
+                await progress_callback("querying", 0, 0, "Querying error workflow instances...")
+            
+            process_nos = report.get('workflow_processes') or None
+            
+            # Query with ERROR_INSTANCES flag (skip user expansion - we want instances, not users)
+            error_instances = await therefore_client.get_all_workflow_instances(
+                process_nos=process_nos,
+                max_rows=10000,
+                workflow_flags=WorkflowFlags.ERROR_INSTANCES,
+                skip_user_expansion=True
+            )
+            
+            self.instances_found = len(error_instances)
+            self.messages.append(f"Found {len(error_instances)} workflow instances in error state")
+            
+            if not error_instances:
+                # No errors found - still update next run time
+                self._update_report_schedule(report)
+                add_run_log(report_id, "success", "No workflow errors found", 0, 0, 0)
+                return True
+            
+            # Step 2: Send single email to configured recipients
+            if progress_callback:
+                await progress_callback("emailing", 0, 1, "Sending error report email...")
+            
+            # Render email with all error instances
+            # For error reports, we pass dummy user info since it's a system report
+            subject, body = template_renderer.render(
+                instances=error_instances,
+                user_display_name="Administrator",
+                user_email=error_to
+            )
+            
+            # Parse CC recipients
+            cc_list = []
+            error_cc = report.get('error_cc_email', '').strip()
+            if error_cc:
+                cc_list = [e.strip() for e in error_cc.split(',') if e.strip()]
+            
+            # Create and send email
+            email_msg = EmailMessage(
+                to_address=error_to,
+                cc_addresses=cc_list,
+                from_address=smtp_config['from_address'],
+                subject=subject,
+                body_html=body,
+                from_name=smtp_config.get('from_name')
+            )
+            
+            print(f"[REPORT] Sending error report to: {error_to}")
+            if cc_list:
+                print(f"[REPORT] CC: {', '.join(cc_list)}")
+            
+            success = await email_service.send(email_msg)
+            
+            if success:
+                self.emails_sent = 1
+                self.messages.append(f"Error report sent to {error_to}")
+            else:
+                self.emails_failed = 1
+                self.messages.append(f"Failed to send error report to {error_to}")
+            
+            # Step 3: Update report schedule
+            self._update_report_schedule(report)
+            
+            # Step 4: Log run
+            status = "success" if success else "error"
+            message = "; ".join(self.messages)
+            add_run_log(
+                report_id,
+                status,
+                message,
+                instances_found=self.instances_found,
+                emails_sent=self.emails_sent,
+                emails_failed=self.emails_failed
+            )
+            
+            return success
+            
+        except Exception as e:
+            error_msg = f"Error processing error report: {str(e)}"
+            self.messages.append(error_msg)
+            add_run_log(report_id, "error", error_msg)
+            return False
+        finally:
+            await therefore_client.close()
 
     async def test_report(
         self,
@@ -300,6 +462,10 @@ class ReportProcessor:
         # Note: Allow testing even if report is disabled
         if not report.get('enabled', True):
             self.messages.append(f"Note: Report '{report['name']}' is disabled but can still be tested")
+        
+        # Route error reports to dedicated test handler
+        if report.get('is_error_report'):
+            return await self._test_error_report(report, progress_callback, template_id)
         
         # Get tenant
         tenant = get_tenant_by_id(report['tenant_id'])
@@ -501,6 +667,365 @@ class ReportProcessor:
         finally:
             await therefore_client.close()
 
+    async def _test_error_report(
+        self,
+        report: dict,
+        progress_callback: Optional[Callable] = None,
+        template_id: int = None
+    ) -> Dict[str, Any]:
+        """Test an error report without sending emails.
+        
+        Returns statistics and a preview of the error report email.
+        
+        Args:
+            report: The error report configuration
+            progress_callback: Optional callback for progress updates
+            template_id: Optional template ID to use instead of report's default
+            
+        Returns:
+            Dictionary with test results and preview
+        """
+        report_id = report['id']
+        
+        # Get tenant
+        tenant = get_tenant_by_id(report['tenant_id'])
+        if not tenant or not tenant.get('is_active', True):
+            return {
+                "success": False,
+                "error": f"Tenant for report '{report['name']}' not found or inactive",
+                "instances_found": 0,
+                "user_count": 0,
+                "preview_html": None
+            }
+        
+        # Get template
+        template = get_template_by_id(template_id or report['template_id'])
+        if not template:
+            return {
+                "success": False,
+                "error": f"Template not found",
+                "instances_found": 0,
+                "user_count": 0,
+                "preview_html": None
+            }
+        
+        therefore_client = ThereforeClient(
+            base_url=tenant['base_url'],
+            tenant_name=tenant['name'],
+            auth_token=tenant['auth_token'],
+            is_single_instance=tenant.get('is_single_instance', False)
+        )
+        
+        template_renderer = EmailTemplateRenderer(
+            subject_template=template['subject_template'],
+            body_template=template['body_template']
+        )
+        
+        try:
+            # Step 0: Test connection
+            if progress_callback:
+                await progress_callback("querying", 0, 0, "Testing connection to Therefore...")
+            
+            connection_test = await therefore_client.test_connection()
+            if not connection_test.get('success'):
+                error_msg = connection_test.get('error', 'Unknown connection error')
+                return {
+                    "success": False,
+                    "error": f"Cannot connect to Therefore: {error_msg}",
+                    "instances_found": 0,
+                    "user_count": 0,
+                    "preview_html": None,
+                    "messages": self.messages
+                }
+            
+            print(f"[REPORT] Testing ERROR report '{report['name']}'")
+            
+            # Step 1: Query error workflow instances
+            if progress_callback:
+                await progress_callback("querying", 0, 0, "Querying error workflow instances...")
+            
+            process_nos = report.get('workflow_processes') or None
+            
+            error_instances = await therefore_client.get_all_workflow_instances(
+                process_nos=process_nos,
+                max_rows=10000,
+                workflow_flags=WorkflowFlags.ERROR_INSTANCES,
+                skip_user_expansion=True
+            )
+            
+            self.instances_found = len(error_instances)
+            self.messages.append(f"Found {len(error_instances)} workflow instances in error state")
+            
+            if not error_instances:
+                return {
+                    "success": True,
+                    "error": None,
+                    "instances_found": 0,
+                    "user_count": 0,
+                    "preview_html": "<div class='alert alert-info'>No workflow errors found.</div>",
+                    "messages": self.messages
+                }
+            
+            # Step 2: Render preview email
+            error_to = report.get('error_to_email', 'Not configured')
+            error_cc = report.get('error_cc_email', '')
+            
+            if progress_callback:
+                await progress_callback("rendering", 0, 1, "Generating preview...")
+            
+            subject, body = template_renderer.render(
+                instances=error_instances,
+                user_display_name="Administrator",
+                user_email=error_to
+            )
+            
+            # Create preview HTML
+            preview_html = f"""
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f8f9fa; border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
+                <tr>
+                    <td style="padding: 15px;">
+                        <h5 style="margin: 0 0 10px 0;">Error Report Preview</h5>
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size: 14px;">
+                            <tr>
+                                <td width="100" style="color: #6c757d; padding: 2px 0;">To:</td>
+                                <td style="padding: 2px 0;">{error_to}</td>
+                            </tr>
+                            <tr>
+                                <td width="100" style="color: #6c757d; padding: 2px 0;">CC:</td>
+                                <td style="padding: 2px 0;">{error_cc or 'None'}</td>
+                            </tr>
+                            <tr>
+                                <td width="100" style="color: #6c757d; padding: 2px 0;">Subject:</td>
+                                <td style="padding: 2px 0;">{subject}</td>
+                            </tr>
+                            <tr>
+                                <td width="100" style="color: #6c757d; padding: 2px 0;">Errors:</td>
+                                <td style="padding: 2px 0;">{len(error_instances)} instances</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            <div style="border: 1px solid #dee2e6;">
+                {body}
+            </div>
+            """
+            
+            return {
+                "success": True,
+                "error": None,
+                "instances_found": self.instances_found,
+                "user_count": 1,  # Single recipient
+                "preview_html": preview_html,
+                "messages": self.messages,
+                "template_used": {
+                    "id": template['id'],
+                    "name": template['name']
+                }
+            }
+            
+        except Exception as e:
+            error_msg = f"Error testing error report: {str(e)}"
+            self.messages.append(error_msg)
+            return {
+                "success": False,
+                "error": error_msg,
+                "instances_found": self.instances_found,
+                "user_count": 0,
+                "preview_html": None,
+                "messages": self.messages
+            }
+        finally:
+            await therefore_client.close()
+
+    async def _test_error_report_with_data(
+        self,
+        report: dict,
+        progress_callback: Optional[Callable] = None,
+        template_id: int = None
+    ) -> Dict[str, Any]:
+        """Test an error report without sending emails, returning data for re-rendering.
+        
+        Args:
+            report: The error report configuration
+            progress_callback: Optional callback for progress updates
+            template_id: Optional template ID to use instead of report's default
+            
+        Returns:
+            Dictionary with test results, raw data, and preview
+        """
+        report_id = report['id']
+        
+        # Get tenant
+        tenant = get_tenant_by_id(report['tenant_id'])
+        if not tenant or not tenant.get('is_active', True):
+            return {
+                "success": False,
+                "error": f"Tenant for report '{report['name']}' not found or inactive",
+                "instances_found": 0,
+                "user_count": 0,
+                "preview_html": None,
+                "instances_data": None
+            }
+        
+        # Get template
+        template = get_template_by_id(template_id or report['template_id'])
+        if not template:
+            return {
+                "success": False,
+                "error": f"Template not found",
+                "instances_found": 0,
+                "user_count": 0,
+                "preview_html": None,
+                "instances_data": None
+            }
+        
+        therefore_client = ThereforeClient(
+            base_url=tenant['base_url'],
+            tenant_name=tenant['name'],
+            auth_token=tenant['auth_token'],
+            is_single_instance=tenant.get('is_single_instance', False)
+        )
+        
+        template_renderer = EmailTemplateRenderer(
+            subject_template=template['subject_template'],
+            body_template=template['body_template']
+        )
+        
+        try:
+            # Step 0: Test connection
+            if progress_callback:
+                await progress_callback("querying", 0, 0, "Testing connection to Therefore...")
+            
+            connection_test = await therefore_client.test_connection()
+            if not connection_test.get('success'):
+                error_msg = connection_test.get('error', 'Unknown connection error')
+                return {
+                    "success": False,
+                    "error": f"Cannot connect to Therefore: {error_msg}",
+                    "instances_found": 0,
+                    "user_count": 0,
+                    "preview_html": None,
+                    "instances_data": None,
+                    "messages": self.messages
+                }
+            
+            print(f"[REPORT] Testing ERROR report with data '{report['name']}'")
+            
+            # Step 1: Query error workflow instances
+            if progress_callback:
+                await progress_callback("querying", 0, 0, "Querying error workflow instances...")
+            
+            process_nos = report.get('workflow_processes') or None
+            
+            error_instances = await therefore_client.get_all_workflow_instances(
+                process_nos=process_nos,
+                max_rows=10000,
+                workflow_flags=WorkflowFlags.ERROR_INSTANCES,
+                skip_user_expansion=True
+            )
+            
+            self.instances_found = len(error_instances)
+            self.messages.append(f"Found {len(error_instances)} workflow instances in error state")
+            
+            # Serialize instances for re-rendering
+            instances_data = []
+            for inst in error_instances:
+                instances_data.append({
+                    'instance_no': inst.instance_no,
+                    'process_name': inst.process_name,
+                    'task_name': inst.task_name,
+                    'task_start': inst.task_start.isoformat() if inst.task_start else None,
+                    'task_due': inst.task_due.isoformat() if inst.task_due else None,
+                    'index_data_string': inst.index_data_string,
+                    'twa_url': inst.twa_url,
+                    'token_no': inst.token_no
+                })
+            
+            if not error_instances:
+                return {
+                    "success": True,
+                    "error": None,
+                    "instances_found": 0,
+                    "user_count": 0,
+                    "preview_html": "<div class='alert alert-info'>No workflow errors found.</div>",
+                    "instances_data": instances_data,
+                    "messages": self.messages
+                }
+            
+            # Step 2: Render preview email
+            error_to = report.get('error_to_email', 'Not configured')
+            error_cc = report.get('error_cc_email', '')
+            
+            if progress_callback:
+                await progress_callback("rendering", 0, 1, "Generating preview...")
+            
+            subject, body = template_renderer.render(
+                instances=error_instances,
+                user_display_name="Administrator",
+                user_email=error_to
+            )
+            
+            # Create preview HTML
+            preview_html = f"""
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #f8f9fa; border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
+                <tr>
+                    <td style="padding: 15px;">
+                        <h5 style="margin: 0 0 10px 0;">Error Report Preview</h5>
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size: 14px;">
+                            <tr>
+                                <td width="100" style="color: #6c757d; padding: 2px 0;">To:</td>
+                                <td style="padding: 2px 0;">{error_to}</td>
+                            </tr>
+                            <tr>
+                                <td width="100" style="color: #6c757d; padding: 2px 0;">CC:</td>
+                                <td style="padding: 2px 0;">{error_cc or 'None'}</td>
+                            </tr>
+                            <tr>
+                                <td width="100" style="color: #6c757d; padding: 2px 0;">Subject:</td>
+                                <td style="padding: 2px 0;">{subject}</td>
+                            </tr>
+                            <tr>
+                                <td width="100" style="color: #6c757d; padding: 2px 0;">Errors:</td>
+                                <td style="padding: 2px 0;">{len(error_instances)} instances</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            <div style="border: 1px solid #dee2e6;">
+                {body}
+            </div>
+            """
+            
+            return {
+                "success": True,
+                "error": None,
+                "instances_found": self.instances_found,
+                "user_count": 1,
+                "preview_html": preview_html,
+                "instances_data": instances_data,
+                "messages": self.messages,
+                "template_used": {
+                    "id": template['id'],
+                    "name": template['name']
+                }
+            }
+            
+        except Exception as e:
+            error_msg = f"Error testing error report: {str(e)}"
+            self.messages.append(error_msg)
+            return {
+                "success": False,
+                "error": error_msg,
+                "instances_found": self.instances_found,
+                "user_count": 0,
+                "preview_html": None,
+                "instances_data": None,
+                "messages": self.messages
+            }
+        finally:
+            await therefore_client.close()
 
     async def test_report_with_data(
         self,
@@ -541,6 +1066,10 @@ class ReportProcessor:
         # Note: Allow testing even if report is disabled
         if not report.get('enabled', True):
             self.messages.append(f"Note: Report '{report['name']}' is disabled but can still be tested")
+        
+        # Route error reports to dedicated test handler
+        if report.get('is_error_report'):
+            return await self._test_error_report_with_data(report, progress_callback, template_id)
         
         # Get tenant
         tenant = get_tenant_by_id(report['tenant_id'])

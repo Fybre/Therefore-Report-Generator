@@ -18,6 +18,7 @@ class EmailMessage:
     subject: str
     body_html: str
     from_name: Optional[str] = None
+    cc_addresses: Optional[List[str]] = None
 
 
 class EmailTemplateRenderer:
@@ -153,12 +154,17 @@ class EmailService:
         mime_msg['From'] = f"{message.from_name or self.from_name or 'Report Generator'} <{message.from_address}>"
         mime_msg['To'] = message.to_address
         
+        # Add CC recipients if provided
+        if message.cc_addresses:
+            mime_msg['Cc'] = ', '.join(message.cc_addresses)
+        
         # Attach HTML body
         html_part = MIMEText(message.body_html, 'html')
         mime_msg.attach(html_part)
         
         print(f"[SMTP] Connecting to {self.server}:{self.port} (TLS={self.use_tls}) with user '{self.username}'")
-        print(f"[SMTP] Sending email to: {message.to_address} (Subject: {message.subject[:50]}...)")
+        cc_info = f" (CC: {', '.join(message.cc_addresses)})" if message.cc_addresses else ""
+        print(f"[SMTP] Sending email to: {message.to_address}{cc_info} (Subject: {message.subject[:50]}...)")
         
         try:
             await aiosmtplib.send(
@@ -249,6 +255,8 @@ def create_default_templates() -> dict:
         td { padding: 12px; border-bottom: 1px solid #eee; }
         tr.overdue { background-color: #ffe6e6; }
         tr.overdue td { color: #c0392b; font-weight: 500; }
+        tr.on-track-info { background-color: #d8ebdc; }
+        tr.on-track-info td { color: #06260d; }
         .overdue-badge { background-color: #e74c3c; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-left: 8px; }
         a { color: #3498db; text-decoration: none; font-weight: 500; }
         .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #7f8c8d; text-align: center; }
@@ -302,7 +310,7 @@ def create_default_templates() -> dict:
                 </thead>
                 <tbody>
                     {% for instance in instances %}
-                    <tr class="{% if instance.is_overdue %}overdue{% endif %}">
+                    <tr class="{% if instance.is_overdue %}overdue{% else %}on-track-info{% endif %}">
                         <td>
                             <a href="{{ instance.twa_url }}">{{ instance.task_name }}</a>
                             {% if instance.is_overdue %}
@@ -323,7 +331,7 @@ def create_default_templates() -> dict:
         
         <div class="footer">
             <p>Generated at {{ now | format_datetime }} &bull; Server Timezone: {{ timezone }}</p>
-            <p><small>Do not reply to this email.</small></p>
+            <p><small>This is an unmonitored email address. Do not reply to this email.</small></p>
         </div>
     </div>
 </body>
@@ -417,7 +425,7 @@ def create_default_templates() -> dict:
         
         <div class="footer">
             <p>Generated at {{ now | format_datetime }} &bull; Server Timezone: {{ timezone }}</p>
-            <p><small>Do not reply to this email.</small></p>
+            <p><small>This is an unmonitored email address. Do not reply to this email.</small></p>
         </div>
     </div>
 </body>
@@ -548,7 +556,91 @@ def create_default_templates() -> dict:
         
         <div class="footer">
             <p>Generated at {{ now | format_datetime }} &bull; Server Timezone: {{ timezone }}</p>
-            <p><small>Do not reply to this email.</small></p>
+            <p><small>This is an unmonitored email address. Do not reply to this email.</small></p>
+        </div>
+    </div>
+</body>
+</html>"""
+    )
+    
+    # Template 4: Error workflows - System notification style for admin
+    templates["error_workflows"] = (
+        "Workflow Error Report - {{ now.strftime('%Y-%m-%d %H:%M') }}",
+        """<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        h1 { color: #c0392b; border-bottom: 3px solid #e74c3c; padding-bottom: 10px; }
+        .alert { background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0; color: #856404; }
+        .alert strong { color: #856404; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background-color: #e74c3c; color: white; padding: 14px; text-align: left; font-weight: 600; }
+        td { padding: 12px; border-bottom: 1px solid #f5c6cb; background-color: #fff5f5; }
+        tr:nth-child(even) td { background-color: #ffe6e6; }
+        .instance-no { font-family: monospace; font-size: 12px; color: #7f8c8d; }
+        .system-badge { background-color: #95a5a6; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
+        a { color: #c0392b; text-decoration: none; font-weight: 600; }
+        a:hover { text-decoration: underline; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #7f8c8d; text-align: center; }
+        .no-errors { text-align: center; padding: 40px; color: #27ae60; background: #d4edda; border-radius: 8px; margin: 20px 0; }
+        .summary { background-color: #fdf2f2; border-left: 5px solid #e74c3c; padding: 15px 20px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚠️ Workflow Error Report</h1>
+        
+        <p>This is an automated report of workflow instances that have encountered errors.</p>
+        
+        {% if instances %}
+            <div class="summary">
+                <strong>{{ instance_count }} workflow instance(s) in error state</strong><br>
+                Generated at {{ now | format_datetime }}
+            </div>
+            
+            <div class="alert">
+                <strong>Action Required:</strong> These workflow instances require investigation. 
+                Click on the task name to view details and resolve the error.
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Instance</th>
+                        <th>Task</th>
+                        <th>Workflow</th>
+                        <th>Started</th>
+                        <th>Assigned To</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instance in instances %}
+                    <tr>
+                        <td>
+                            <span class="instance-no">#{{ instance.instance_no }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ instance.twa_url }}">{{ instance.task_name }}</a>
+                        </td>
+                        <td>{{ instance.process_name }}</td>
+                        <td>{{ instance.task_start | format_date }}</td>
+                        <td><span class="system-badge">SYSTEM</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="no-errors">
+                <strong>✓ No workflow errors found!</strong><br>
+                <small>All workflows are running normally.</small>
+            </div>
+        {% endif %}
+        
+        <div class="footer">
+            <p>Generated at {{ now | format_datetime }} &bull; Server Timezone: {{ timezone }}</p>
+            <p><small>This is an unmonitored email address. Do not reply to this email.</small></p>
         </div>
     </div>
 </body>

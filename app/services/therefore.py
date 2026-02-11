@@ -260,6 +260,7 @@ class InstanceForUser:
     user_smtp: str
     linked_documents: List[LinkedDocument]
     tenant_base_url: str
+    token_no: int = 0  # Token number for TWA URL and grouping
 
     @property
     def index_data_string(self) -> str:
@@ -277,8 +278,11 @@ class InstanceForUser:
 
     @property
     def twa_url(self) -> str:
-        """Get the Therefore Web Access URL for this instance."""
-        return f"{self.tenant_base_url}/Viewer.aspx?InstanceNo={self.instance_no}"
+        """Get the Therefore Web Access URL for this instance.
+        
+        Uses the new TDWV format with token number for direct task access.
+        """
+        return f"{self.tenant_base_url}/tdwv/#/workflows/instance/{self.instance_no}/{self.token_no}"
 
 
 def sort_instances(instances: List[InstanceForUser], sort_order: str) -> List[InstanceForUser]:
@@ -362,7 +366,6 @@ class ThereforeClient:
         """Make a POST request to the API."""
         url = f"{self.api_base}/{endpoint}"
         try:
-            print(f"[THEREFORE] POST {endpoint} to {self.tenant_name}")
             response = await self.client.post(
                 url,
                 headers=self._get_headers(),
@@ -453,6 +456,7 @@ class ThereforeClient:
         }
 
         result = await self._post("GetObjectsList", data)
+        
         if not result:
             return []
 
@@ -491,7 +495,7 @@ class ThereforeClient:
         self,
         max_rows: int = 10000,
         workflow_flags: Optional[WorkflowFlags] = None
-    ) -> List[int]:
+    ) -> Optional[List[tuple[int, int]]]:
         """Execute workflow query for all processes.
 
         Args:
@@ -499,7 +503,7 @@ class ThereforeClient:
             workflow_flags: WorkflowFlags enum value (default: RUNNING_INSTANCES)
 
         Returns:
-            List of instance numbers
+            List of instance numbers, or None if the query failed
         """
         if workflow_flags is None:
             workflow_flags = self.DEFAULT_WORKFLOW_FLAG
@@ -511,7 +515,7 @@ class ThereforeClient:
         
         result = await self._post("ExecuteWorkflowQueryForAll", data)
         if not result:
-            return []
+            return None  # Return None to indicate query failed
         
         instances = []
         query_results = result.get("WorkflowQueryResultList", [])
@@ -519,17 +523,128 @@ class ThereforeClient:
             rows = query_result.get("ResultRows", [])
             for row in rows:
                 instance_no = row.get("InstanceNo")
+                token_no = row.get("TokenNo", 0)
                 if instance_no:
-                    instances.append(instance_no)
+                    instances.append((instance_no, token_no))
         
         return instances
+    
+    async def _get_active_processes_from_stats(self) -> Optional[set]:
+        """Get set of process IDs that have active workflow instances.
+        
+        Uses ExecuteStatisticsQuery type 102 to efficiently find processes
+        with active instances. Returns None if the query fails.
+        
+        Returns:
+            Set of process numbers with active instances, or None on error
+        """
+        try:
+            stats_result = await self._post("ExecuteStatisticsQuery", {"QueryType": 102})
+            if not stats_result:
+                return None
+            
+            query_result = stats_result.get("QueryResult", {})
+            result_rows = query_result.get("ResultRows", [])
+            
+            # Return set of process IDs with CountValue > 0
+            active_processes = {
+                entry.get("EntryNo") 
+                for entry in result_rows 
+                if entry.get("EntryNo") and entry.get("CountValue", 0) > 0
+            }
+            return active_processes
+        except Exception as e:
+            # Silently fail - we'll just query all requested processes
+            print(f"[THEREFORE] Stats pre-filter failed (non-critical): {e}")
+            return None
+    
+    async def execute_workflow_query_with_fallback(
+        self,
+        max_rows: int = 10000,
+        workflow_flags: Optional[WorkflowFlags] = None
+    ) -> List[tuple[int, int]]:
+        """Execute workflow query with fallback for corrupted workflows.
+        
+        Tries ExecuteWorkflowQueryForAll first. If that fails (e.g., due to corrupted
+        workflow instances), falls back to querying each process individually using
+        ExecuteStatisticsQuery to find active/error processes.
+        
+        Args:
+            max_rows: Maximum rows to return
+            workflow_flags: WorkflowFlags enum value (default: RUNNING_INSTANCES)
+            
+        Returns:
+            List of (instance_no, token_no) tuples
+        """
+        # Try the standard all-processes query first
+        instances = await self.execute_workflow_query_for_all(max_rows, workflow_flags)
+        if instances is not None:
+            # Query succeeded (may be empty list, which is valid)
+            return instances
+        
+        # Query failed - use fallback
+        print(f"[THEREFORE] ExecuteWorkflowQueryForAll failed, using fallback...")
+        
+        # Fallback: Get processes from statistics, query each individually
+        print(f"[THEREFORE] Falling back to individual process queries...")
+        
+        # Determine which statistics query to use based on workflow_flags
+        # Type 102 = active instances, Type 108 = error instances
+        is_error_query = (workflow_flags == WorkflowFlags.ERROR_INSTANCES)
+        stats_query_type = 108 if is_error_query else 102
+        
+        stats_result = await self._post("ExecuteStatisticsQuery", {"QueryType": stats_query_type})
+        if not stats_result:
+            print("[THEREFORE] ExecuteStatisticsQuery returned no result")
+            return []
+        
+        # Extract process IDs with active instances
+        query_result = stats_result.get("QueryResult", {})
+        result_rows = query_result.get("ResultRows", [])
+        
+        process_ids = []
+        for entry in result_rows:
+            entry_no = entry.get("EntryNo")
+            count = entry.get("CountValue", 0)
+            if entry_no and count > 0:
+                process_ids.append(entry_no)
+        
+        print(f"[THEREFORE] Found {len(process_ids)} active processes to query")
+        
+        # Query each process individually, skipping any that fail
+        all_instances = []
+        failed_processes = []
+        for process_no in process_ids:
+            try:
+                instances = await self.execute_workflow_query_for_process(
+                    process_no, max_rows, workflow_flags
+                )
+                all_instances.extend(instances)
+            except Exception as e:
+                # Log but continue - some processes may be corrupted
+                failed_processes.append(process_no)
+                print(f"[THEREFORE] Skipping process {process_no} (query failed): {e}")
+        
+        if failed_processes:
+            print(f"[THEREFORE] Warning: {len(failed_processes)} processes failed: {failed_processes}")
+        
+        # Remove duplicates while preserving order (based on instance_no + token_no)
+        seen = set()
+        unique_instances = []
+        for inst_tuple in all_instances:
+            if inst_tuple not in seen:
+                seen.add(inst_tuple)
+                unique_instances.append(inst_tuple)
+        
+        print(f"[THEREFORE] Fallback query complete: {len(unique_instances)} unique instances from {len(process_ids) - len(failed_processes)} processes")
+        return unique_instances
     
     async def execute_workflow_query_for_process(
         self,
         process_no: int,
         max_rows: int = 10000,
         workflow_flags: Optional[WorkflowFlags] = None
-    ) -> List[int]:
+    ) -> List[tuple[int, int]]:
         """Execute workflow query for a specific process.
 
         Args:
@@ -538,7 +653,7 @@ class ThereforeClient:
             workflow_flags: WorkflowFlags enum value (default: RUNNING_INSTANCES)
 
         Returns:
-            List of instance numbers
+            List of (instance_no, token_no) tuples
         """
         if workflow_flags is None:
             workflow_flags = self.DEFAULT_WORKFLOW_FLAG
@@ -558,8 +673,9 @@ class ThereforeClient:
         rows = query_result.get("ResultRows", [])
         for row in rows:
             instance_no = row.get("InstanceNo")
+            token_no = row.get("TokenNo", 0)
             if instance_no:
-                instances.append(instance_no)
+                instances.append((instance_no, token_no))
         
         return instances
     
@@ -709,7 +825,9 @@ class ThereforeClient:
         self, 
         process_nos: Optional[List[int]] = None,
         max_rows: int = 10000,
-        progress_callback=None
+        progress_callback=None,
+        workflow_flags: Optional[WorkflowFlags] = None,
+        skip_user_expansion: bool = False
     ) -> List[InstanceForUser]:
         """Get all workflow instances with flattened user assignments.
         
@@ -723,6 +841,8 @@ class ThereforeClient:
             process_nos: Optional list of process numbers to filter by
             max_rows: Maximum rows to return
             progress_callback: Optional callback function(current, total, instance_no)
+            workflow_flags: Optional WorkflowFlags enum (default: RUNNING_INSTANCES)
+            skip_user_expansion: If True, return one row per instance without expanding users
             
         Returns:
             List of InstanceForUser objects
@@ -731,20 +851,37 @@ class ThereforeClient:
         if process_nos:
             # De-duplicate process numbers before querying
             unique_process_nos = list(dict.fromkeys(process_nos))
+            
+            # Optimization: Use statistics query to pre-filter processes with active instances
+            # This avoids querying processes that have no workflows (saving API calls)
+            active_processes = await self._get_active_processes_from_stats()
+            if active_processes is not None:
+                # Filter to only processes that have active instances
+                original_count = len(unique_process_nos)
+                unique_process_nos = [p for p in unique_process_nos if p in active_processes]
+                skipped = original_count - len(unique_process_nos)
+                if skipped > 0:
+                    print(f"[THEREFORE] Pre-filtered {skipped} processes with no active instances")
+            
             instance_nos = []
             for process_no in unique_process_nos:
-                instances = await self.execute_workflow_query_for_process(process_no, max_rows)
+                instances = await self.execute_workflow_query_for_process(
+                    process_no, max_rows, workflow_flags
+                )
                 instance_nos.extend(instances)
         else:
-            instance_nos = await self.execute_workflow_query_for_all(max_rows)
+            # Use fallback method for "all processes" to handle corrupted workflows
+            instance_nos = await self.execute_workflow_query_with_fallback(max_rows, workflow_flags)
         
-        # Remove duplicates while preserving order
+        # Remove duplicates while preserving order (based on instance_no + token_no)
         seen = set()
         unique_instances = []
-        for inst in instance_nos:
-            if inst not in seen:
-                seen.add(inst)
-                unique_instances.append(inst)
+        for inst_tuple in instance_nos:
+            # inst_tuple is (instance_no, token_no)
+            key = inst_tuple  # Tuple is hashable
+            if key not in seen:
+                seen.add(key)
+                unique_instances.append(inst_tuple)
         instance_nos = unique_instances
         
         # Step 2: Get details for each instance concurrently (with limit of 10)
@@ -755,45 +892,64 @@ class ThereforeClient:
         # Use a semaphore to limit concurrent requests
         semaphore = asyncio.Semaphore(10)
 
-        async def fetch_instance(instance_no: int):
+        async def fetch_instance(instance_no: int, token_no: int):
             nonlocal completed_count
             async with semaphore:
                 instance = await self.get_workflow_instance(instance_no)
                 completed_count += 1
                 if progress_callback:
                     await progress_callback(completed_count, total, instance_no)
-                return instance
+                return instance, token_no
 
         # Fetch all instances concurrently
-        tasks = [fetch_instance(no) for no in instance_nos]
-        instances = await asyncio.gather(*tasks)
+        tasks = [fetch_instance(no, token) for no, token in instance_nos]
+        instances_with_tokens = await asyncio.gather(*tasks)
 
         # Step 3: Process results - expand groups and flatten to users
-        for instance in instances:
+        for instance, token_no in instances_with_tokens:
             if not instance:
                 continue
+            
+            if skip_user_expansion:
+                # For error reports: return one row per instance without user expansion
+                results.append(InstanceForUser(
+                    instance_no=instance.instance_no,
+                    process_no=instance.process_no,
+                    process_name=instance.process_name,
+                    task_name=instance.task_name,
+                    task_start=instance.task_start,
+                    task_due=instance.task_due,
+                    process_start_date=instance.process_start_date,
+                    user_id=0,
+                    user_display_name="SYSTEM",
+                    user_smtp="",
+                    linked_documents=instance.linked_documents,
+                    tenant_base_url=self.base_url,
+                    token_no=token_no
+                ))
+            else:
+                # Expand groups to users
+                all_users = []
+                await self._expand_users(instance.assigned_to_users, all_users)
 
-            # Expand groups to users
-            all_users = []
-            await self._expand_users(instance.assigned_to_users, all_users)
-
-            # Step 4: Flatten to one row per user
-            for user in all_users:
-                if user.user_type == UserType.SINGLE_USER and not user.disabled:
-                    results.append(InstanceForUser(
-                        instance_no=instance.instance_no,
-                        process_no=instance.process_no,
-                        process_name=instance.process_name,
-                        task_name=instance.task_name,
-                        task_start=instance.task_start,
-                        task_due=instance.task_due,
-                        process_start_date=instance.process_start_date,
-                        user_id=user.user_id,
-                        user_display_name=user.display_name,
-                        user_smtp=user.smtp,
-                        linked_documents=instance.linked_documents,
-                        tenant_base_url=self.base_url
-                    ))
+                # Step 4: Flatten to one row per user (grouping by instance_no + user + token_no)
+                for user in all_users:
+                    if user.user_type == UserType.SINGLE_USER and not user.disabled:
+                        results.append(InstanceForUser(
+                            instance_no=instance.instance_no,
+                            process_no=instance.process_no,
+                            process_name=instance.process_name,
+                            task_name=instance.task_name,
+                            task_start=instance.task_start,
+                            task_due=instance.task_due,
+                            process_start_date=instance.process_start_date,
+                            user_id=user.user_id,
+                            user_display_name=user.display_name,
+                            user_smtp=user.smtp,
+                            linked_documents=instance.linked_documents,
+                            tenant_base_url=self.base_url,
+                            token_no=token_no
+                        ))
 
         return results
     

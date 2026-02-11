@@ -55,7 +55,7 @@
                         <option value="">Select a template...</option>
                         {% for template in templates %}
                         <option value="{{ template.id }}"
-                                {{ 'selected' if report and report.template_id == template.id }}>
+                                {{ 'selected' if report and report.template_id == template.id else 'selected' if not report and template.is_default }}>
                             {{ template.name }}
                             {% if template.is_default %}(Default){% endif %}
                         </option>
@@ -140,7 +140,7 @@
                         </ul>
                     </div>
                 </div>
-                <select class="form-select" id="workflow_processes" name="workflow_processes" multiple size="5">
+                <select class="form-select" id="workflow_processes" name="workflow_processes" multiple size="10">
                     <option value="" disabled>Loading processes...</option>
                 </select>
                 <div class="form-text">
@@ -149,37 +149,77 @@
                 <input type="hidden" id="workflow_processes_json" name="workflow_processes_json" value="{{ report.workflow_processes|tojson if report and report.workflow_processes else '[]' }}">
             </div>
             
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card mb-3">
-                        <div class="card-header">Options</div>
-                        <div class="card-body">
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="enabled" name="enabled" 
-                                       {{ 'checked' if not report or report.enabled }}>
-                                <label class="form-check-label" for="enabled">
-                                    Enabled
-                                </label>
-                            </div>
-                            
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="send_all_to_admin" name="send_all_to_admin" 
-                                       {{ 'checked' if report and report.send_all_to_admin }}>
-                                <label class="form-check-label" for="send_all_to_admin">
-                                    Send all emails to admin (for testing)
-                                </label>
-                            </div>
+            <!-- Error Report Type Toggle -->
+            <div class="card mb-3">
+                <div class="card-header bg-light">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_error_report" name="is_error_report" 
+                               {{ 'checked' if report and report.is_error_report }}
+                               onchange="toggleErrorReportFields()">
+                        <label class="form-check-label" for="is_error_report">
+                            <i class="bi bi-exclamation-triangle me-2 text-warning"></i>This is an Error Workflow Report
+                        </label>
+                    </div>
+                </div>
+                <div class="card-body" id="errorReportFields" style="display: {{ 'block' if report and report.is_error_report else 'none' }};">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Error reports query workflows that are in an error state and send a single email 
+                        to the configured recipients. No user grouping is performed.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="error_to_email" class="form-label">To *</label>
+                            <input type="email" class="form-control" id="error_to_email" name="error_to_email" 
+                                   value="{{ report.error_to_email if report else '' }}"
+                                   placeholder="admin@company.com">
+                            <div class="form-text">Primary recipient for error reports</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="error_cc_email" class="form-label">CC</label>
+                            <input type="text" class="form-control" id="error_cc_email" name="error_cc_email" 
+                                   value="{{ report.error_cc_email if report else '' }}"
+                                   placeholder="manager@company.com, support@company.com">
+                            <div class="form-text">Comma-separated list of CC recipients (optional)</div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="col-md-6">
-                    <div class="card mb-3">
-                        <div class="card-header">Admin Email</div>
-                        <div class="card-body">
-                            <input type="email" class="form-control" id="admin_email" name="admin_email" 
-                                   value="{{ report.admin_email if report else '' }}">
-                            <div class="form-text">Override recipient for testing</div>
+            </div>
+            
+            <!-- Standard Report Options (hidden for error reports) -->
+            <div id="standardReportOptions" style="display: {{ 'none' if report and report.is_error_report else 'block' }};">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header">Options</div>
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="enabled" name="enabled" 
+                                           {{ 'checked' if not report or report.enabled }}>
+                                    <label class="form-check-label" for="enabled">
+                                        Enabled
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="send_all_to_admin" name="send_all_to_admin" 
+                                           {{ 'checked' if report and report.send_all_to_admin }}>
+                                    <label class="form-check-label" for="send_all_to_admin">
+                                        Send all emails to admin (for testing)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header">Admin Email</div>
+                            <div class="card-body">
+                                <input type="email" class="form-control" id="admin_email" name="admin_email" 
+                                       value="{{ report.admin_email if report else '' }}">
+                                <div class="form-text">Override recipient for testing</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -468,6 +508,26 @@ document.querySelector('form').addEventListener('submit', function() {
     
     // Update the hidden input with selected processes
     document.getElementById('workflow_processes_json').value = JSON.stringify(selectedValues);
+});
+
+// Toggle error report fields visibility
+function toggleErrorReportFields() {
+    const isErrorReport = document.getElementById('is_error_report').checked;
+    const errorFields = document.getElementById('errorReportFields');
+    const standardOptions = document.getElementById('standardReportOptions');
+    
+    if (isErrorReport) {
+        errorFields.style.display = 'block';
+        standardOptions.style.display = 'none';
+    } else {
+        errorFields.style.display = 'none';
+        standardOptions.style.display = 'block';
+    }
+}
+
+// Initialize error report fields on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleErrorReportFields();
 });
 </script>
 {% endblock %}

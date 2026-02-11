@@ -19,6 +19,30 @@ services:
     networks:
       - therefore-network
 
+  # Backup service - runs scheduled backups of data directory
+  backup:
+    image: alpine:latest
+    container_name: therefore-report-generator-backup
+    restart: unless-stopped
+    environment:
+      - TZ=Australia/Sydney
+    volumes:
+      - ./data:/data:ro           # Read-only access to data
+      - ./data/backups:/backups   # Backup storage location
+      - ./backup/backup.sh:/backup.sh:ro
+    command: >
+      sh -c "
+        apk add --no-cache zip tzdata &&
+        echo 'Backup service started. Schedule: Daily at 2:00 AM' &&
+        # Run initial backup
+        sh /backup.sh &&
+        # Setup cron (daily at 2 AM)
+        echo '0 2 * * * sh /backup.sh >> /var/log/backup.log 2>&1' | crontab - &&
+        crond -f -L /var/log/cron.log
+      "
+    networks:
+      - therefore-network
+
 networks:
   therefore-network:
     driver: bridge

@@ -171,3 +171,4 @@ volumes/
 docker-compose.override.yml
 .claude
 AGENTS.md
+.test.env

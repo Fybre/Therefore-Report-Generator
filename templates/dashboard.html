@@ -1,6 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Therefore Report Generator{% endblock %}
+{% block title %}Dashboard - Therefore Report Generator<script>
+// Convert UTC times to local browser time
+document.addEventListener('DOMContentLoaded', function() {
+    const timeElements = document.querySelectorAll('.local-time');
+    timeElements.forEach(function(el) {
+        const utcTime = el.getAttribute('data-utc');
+        if (utcTime) {
+            // Ensure the time is parsed as UTC by appending 'Z' if not present
+            const utcTimeStr = utcTime.endsWith('Z') ? utcTime : utcTime + 'Z';
+            const date = new Date(utcTimeStr);
+            // Format: YYYY-MM-DD HH:MM
+            const formatted = date.getFullYear() + '-' + 
+                String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(date.getDate()).padStart(2, '0') + ' ' + 
+                String(date.getHours()).padStart(2, '0') + ':' + 
+                String(date.getMinutes()).padStart(2, '0');
+            el.textContent = formatted;
+        }
+    });
+});
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -193,7 +214,7 @@
                                         {{ run.report_name }}
                                     </a>
                                 </td>
-                                <td>{{ (run.started_at[:16] | replace('T', ' ')) if run.started_at is string else run.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td><small class="text-muted local-time" data-utc="{{ run.started_at }}">{{ (run.started_at[:16] | replace('T', ' ')) if run.started_at is string else run.started_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
                                 <td>
                                     {% if run.status == 'success' %}
                                     <span class="badge status-success">Success</span>
@@ -263,4 +284,26 @@
         </div>
     </div>
 </div>
+
+<script>
+// Convert UTC times to local browser time
+document.addEventListener('DOMContentLoaded', function() {
+    const timeElements = document.querySelectorAll('.local-time');
+    timeElements.forEach(function(el) {
+        const utcTime = el.getAttribute('data-utc');
+        if (utcTime) {
+            // Ensure the time is parsed as UTC by appending 'Z' if not present
+            const utcTimeStr = utcTime.endsWith('Z') ? utcTime : utcTime + 'Z';
+            const date = new Date(utcTimeStr);
+            // Format: YYYY-MM-DD HH:MM
+            const formatted = date.getFullYear() + '-' + 
+                String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(date.getDate()).padStart(2, '0') + ' ' + 
+                String(date.getHours()).padStart(2, '0') + ':' + 
+                String(date.getMinutes()).padStart(2, '0');
+            el.textContent = formatted;
+        }
+    });
+});
+</script>
 {% endblock %}

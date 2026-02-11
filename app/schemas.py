@@ -77,6 +77,9 @@ class ReportCreate(ReportBase):
     template_id: int
     send_all_to_admin: bool = False
     admin_email: Optional[str] = None
+    is_error_report: bool = False
+    error_to_email: Optional[str] = None
+    error_cc_email: Optional[str] = None
 
 
 class SMTPConfigCreate(SMTPConfigBase):
@@ -122,6 +125,9 @@ class ReportUpdate(BaseModel):
     send_all_to_admin: Optional[bool] = None
     admin_email: Optional[str] = None
     template_id: Optional[int] = None
+    is_error_report: Optional[bool] = None
+    error_to_email: Optional[str] = None
+    error_cc_email: Optional[str] = None
 
 
 class SMTPConfigUpdate(BaseModel):

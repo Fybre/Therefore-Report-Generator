@@ -13,6 +13,7 @@ A Python-based web application that generates bulk workflow reports for Therefor
 - **Help System**: Built-in documentation for all features
 - **YAML-based Storage**: No database required - all data in human-readable YAML files
 - **Responsive Web UI**: Modern Bootstrap 5 interface
+- **Automatic Backups**: Scheduled zip backups of all configuration data
 
 ## Quick Start
 
@@ -173,6 +174,45 @@ All data is stored in YAML files in the `data/` directory:
 - `run_logs.yaml` - Report execution history
 - `audit_log.yaml` - Administrative action log
 - `app_config.yaml` - Application configuration (BASE_URL)
+
+## Backup and Recovery
+
+### Automatic Backups
+
+When using Docker Compose, a backup service automatically creates zip archives of all configuration data:
+
+- **Schedule**: Daily at 2:00 AM (configurable)
+- **Location**: `data/backups/`
+- **Retention**: 7 days (automatic cleanup)
+
+```bash
+# View backup logs
+docker-compose logs backup
+
+# Manual backup
+docker-compose exec backup /backup.sh
+```
+
+### Disaster Recovery
+
+1. **Backup your data** (if not already):
+   ```bash
+   cp -r data data-backup-$(date +%Y%m%d)
+   ```
+
+2. **Restore from backup**:
+   ```bash
+   # Stop services
+   docker-compose down
+   
+   # Restore data
+   unzip data/backups/backup_YYYYMMDD_HHMMSS.zip -d data/
+   
+   # Restart
+   docker-compose up -d
+   ```
+
+See [backup/README.md](backup/README.md) for detailed backup documentation.
 
 ## Environment Variables
 

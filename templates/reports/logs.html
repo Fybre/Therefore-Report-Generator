@@ -112,7 +112,7 @@ function applyDatePreset() {
                     {% for log in logs %}
                     <tr>
                         <td>
-                            <small class="text-muted">
+                            <small class="text-muted local-time" data-utc="{{ log.started_at }}">
                                 {{ (log.started_at[:16] | replace('T', ' ')) if log.started_at is string else log.started_at.strftime('%Y-%m-%d %H:%M') }}
                             </small>
                         </td>
@@ -167,6 +167,28 @@ function applyDatePreset() {
         {% endif %}
     </div>
 </div>
+
+<script>
+// Convert UTC times to local browser time
+document.addEventListener('DOMContentLoaded', function() {
+    const timeElements = document.querySelectorAll('.local-time');
+    timeElements.forEach(function(el) {
+        const utcTime = el.getAttribute('data-utc');
+        if (utcTime) {
+            // Ensure the time is parsed as UTC by appending 'Z' if not present
+            const utcTimeStr = utcTime.endsWith('Z') ? utcTime : utcTime + 'Z';
+            const date = new Date(utcTimeStr);
+            // Format: YYYY-MM-DD HH:MM
+            const formatted = date.getFullYear() + '-' + 
+                String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(date.getDate()).padStart(2, '0') + ' ' + 
+                String(date.getHours()).padStart(2, '0') + ':' + 
+                String(date.getMinutes()).padStart(2, '0');
+            el.textContent = formatted;
+        }
+    });
+});
+</script>
 
 <!-- Legend -->
 <div class="card mt-4">

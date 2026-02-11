@@ -15,10 +15,11 @@
                 <i class="bi bi-magic me-2"></i>Init Defaults
             </button>
         </form>
-        {% endif %}
+        
         <a href="/templates/new" class="btn btn-primary">
             <i class="bi bi-plus-lg me-2"></i>New Template
         </a>
+        {% endif %}
     </div>
 </div>
 
@@ -152,6 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             {% endif %}
                         </td>
                         <td>
+                            {% if user.role == 'master_admin' %}
                             <a href="/templates/{{ template.id }}/edit" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-pencil"></i>
                             </a>
@@ -161,6 +163,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
+                            {% else %}
+                            <a href="/templates/{{ template.id }}/edit" class="btn btn-sm btn-outline-secondary disabled">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-secondary disabled">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

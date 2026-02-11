@@ -279,7 +279,8 @@ def create_report(name: str, tenant_id: int, template_id: int, cron_schedule: st
                   description: str = None, workflow_processes: List[int] = None,
                   enabled: bool = True, send_all_to_admin: bool = False,
                   admin_email: str = None, sort_order: str = "task_due_date",
-                  created_by: int = None) -> Dict:
+                  created_by: int = None, is_error_report: bool = False,
+                  error_to_email: str = None, error_cc_email: str = None) -> Dict:
     """Create a new report."""
     reports = get_reports()
 
@@ -305,6 +306,9 @@ def create_report(name: str, tenant_id: int, template_id: int, cron_schedule: st
         'send_all_to_admin': send_all_to_admin,
         'admin_email': admin_email,
         'sort_order': sort_order or "task_due_date",
+        'is_error_report': is_error_report,
+        'error_to_email': error_to_email,
+        'error_cc_email': error_cc_email,
         'next_run': next_run,
         'last_run': None,
         'last_run_status': None,
