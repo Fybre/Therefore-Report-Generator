@@ -46,6 +46,16 @@
 </table>
 
 <h4>Step 2: Schedule Configuration</h4>
+
+<h5>Timezone</h5>
+<p>Select the timezone in which the schedule should be interpreted. The system stores all times internally as UTC but displays them in this timezone.</p>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Example:</strong> If you select "Australia/Sydney" and schedule "17:00" (5 PM), the report will run at 5 PM Sydney time, regardless of where the server is located. All users will see the time displayed as "17:00 AEDT".
+</div>
+
+<h5>Cron Schedule</h5>
 <p>Reports use <strong>cron expressions</strong> to define when they run:</p>
 
 <table class="table table-bordered">
@@ -180,6 +190,7 @@
     <li><strong>Clear naming:</strong> Use descriptive names that indicate frequency and purpose</li>
     <li><strong>Monitor logs:</strong> Check run logs periodically for errors or failures</li>
     <li><strong>Sort appropriately:</strong> Sort by due date for overdue reports, start date for new items</li>
+    <li><strong>Timezone awareness:</strong> Choose the timezone that matches your business hours. The timezone is stored with the report and times are always displayed in that timezone.</li>
 </ul>
 
 <h3>Email Recipients</h3>
@@ -219,6 +230,10 @@
         <tr>
             <td>Schedule not working</td>
             <td>Validate cron expression format</td>
+        </tr>
+        <tr>
+            <td>Report running at wrong time</td>
+            <td>Check that the timezone is set correctly for the report schedule</td>
         </tr>
     </tbody>
 </table>

@@ -249,7 +249,7 @@ async def create_tenant_form(
     """Create tenant from form."""
     form = await request.form()
     
-    create_tenant(
+    new_tenant = create_tenant(
         name=form.get("name"),
         description=form.get("description"),
         base_url=form.get("base_url"),
@@ -257,6 +257,16 @@ async def create_tenant_form(
         is_active=form.get("is_active") == "on",
         is_single_instance=form.get("is_single_instance") == "on",
         created_by=current_user['id']
+    )
+    
+    # Audit log
+    add_audit_log(
+        action='create',
+        target_type='tenant',
+        target_id=str(new_tenant['id']),
+        details=f"Created tenant '{new_tenant['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
     )
     
     return RedirectResponse(url="/tenants", status_code=302)
@@ -324,6 +334,17 @@ async def update_tenant_form(
         updates['auth_token'] = auth_token
     
     update_tenant(tenant_id, updates)
+    
+    # Audit log
+    add_audit_log(
+        action='update',
+        target_type='tenant',
+        target_id=str(tenant_id),
+        details=f"Updated tenant '{tenant['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
+    )
+    
     return RedirectResponse(url="/tenants", status_code=302)
 
 
@@ -333,7 +354,20 @@ async def delete_tenant_form(
     current_user: dict = Depends(require_master_admin),
 ):
     """Delete tenant from form."""
-    delete_tenant(tenant_id)
+    tenant = get_tenant_by_id(tenant_id)
+    if tenant:
+        tenant_name = tenant['name']
+        delete_tenant(tenant_id)
+        
+        # Audit log
+        add_audit_log(
+            action='delete',
+            target_type='tenant',
+            target_id=str(tenant_id),
+            details=f"Deleted tenant '{tenant_name}' (cascade: removed user assignments and reports)",
+            user_id=current_user.get('id'),
+            username=current_user.get('username')
+        )
     return RedirectResponse(url="/tenants", status_code=302)
 
 

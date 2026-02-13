@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
+from zoneinfo import ZoneInfo
 
 from app.auth import (
     get_current_user, 
@@ -14,12 +15,52 @@ from app.auth import (
 from app.store import (
     get_reports, get_report_by_id, create_report, update_report, delete_report,
     get_tenants, get_tenant_by_id, get_templates, get_reports_due_now, get_upcoming_reports,
-    add_run_log, get_recent_run_logs
+    add_run_log, get_recent_run_logs, add_audit_log
 )
 from app.schemas import ReportCreate, ReportUpdate, RunReportResponse
 from app.scheduler import get_scheduler
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+def format_datetime_in_timezone(dt_str: str, timezone: str = "Australia/Sydney", fmt: str = "%Y-%m-%d %H:%M") -> str:
+    """Format a datetime string in the specified timezone.
+    
+    Args:
+        dt_str: ISO format datetime string (assumed UTC)
+        timezone: Target timezone (IANA format)
+        fmt: Output format string
+        
+    Returns:
+        Formatted datetime string with timezone abbreviation
+    """
+    if not dt_str:
+        return "-"
+    
+    try:
+        # Parse the datetime
+        if isinstance(dt_str, str):
+            dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+        else:
+            dt = dt_str
+        
+        # If datetime has no timezone info, assume it's UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+        
+        # Convert to target timezone
+        tz = ZoneInfo(timezone)
+        dt_local = dt.astimezone(tz)
+        
+        # Get timezone abbreviation
+        tz_abbr = dt_local.strftime('%Z')
+        
+        return dt_local.strftime(fmt) + f" {tz_abbr}"
+    except Exception:
+        # Fallback to simple string slicing if parsing fails
+        if isinstance(dt_str, str) and len(dt_str) >= 16:
+            return dt_str[:16].replace('T', ' ')
+        return str(dt_str)
 
 
 @router.get("/api/reports")
@@ -100,7 +141,18 @@ async def create_report_api(
         enabled=report.enabled,
         send_all_to_admin=report.send_all_to_admin,
         admin_email=report.admin_email,
-        created_by=current_user['id']
+        created_by=current_user['id'],
+        timezone=report.timezone
+    )
+    
+    # Audit log
+    add_audit_log(
+        action='create',
+        target_type='report',
+        target_id=str(new_report['id']),
+        details=f"Created report '{new_report['name']}' for tenant '{tenant['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
     )
     
     return {
@@ -126,6 +178,18 @@ async def update_report_api(
     
     updates = report_update.dict(exclude_unset=True)
     update_report(report_id, updates)
+    
+    # Audit log
+    change_details = [f"{k}='{v}'" for k, v in updates.items() if k not in ('updated_at', 'next_run')]
+    add_audit_log(
+        action='update',
+        target_type='report',
+        target_id=str(report_id),
+        details=f"Updated report '{report['name']}': {', '.join(change_details)}" if change_details else f"Updated report '{report['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
+    )
+    
     return {"message": "Report updated successfully"}
 
 
@@ -143,6 +207,17 @@ async def delete_report_api(
         raise HTTPException(status_code=403, detail="Access denied")
     
     delete_report(report_id)
+    
+    # Audit log
+    add_audit_log(
+        action='delete',
+        target_type='report',
+        target_id=str(report_id),
+        details=f"Deleted report '{report['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
+    )
+    
     return {"message": "Report deleted successfully"}
 
 
@@ -197,6 +272,14 @@ async def reports_page(
     has_active_tenants = len(active_tenants) > 0
     
     templates_list = get_templates()
+    
+    # Format next_run times in each report's timezone
+    for report in reports:
+        timezone = report.get('timezone', 'Australia/Sydney')
+        if report.get('next_run'):
+            report['_next_run_formatted'] = format_datetime_in_timezone(report['next_run'], timezone)
+        else:
+            report['_next_run_formatted'] = '-'
     
     return templates.TemplateResponse("reports/list.html", {
         "request": request,
@@ -261,6 +344,11 @@ async def edit_report_page(
     
     templates_list = get_templates()
     
+    # Format last_run in report's timezone for display
+    timezone = report.get('timezone', 'Australia/Sydney')
+    if report.get('last_run'):
+        report['_last_run_formatted'] = format_datetime_in_timezone(report['last_run'], timezone)
+    
     return templates.TemplateResponse("reports/form.html", {
         "request": request,
         "user": current_user,
@@ -307,7 +395,7 @@ async def create_report_form(
     # Check if this is an error report
     is_error_report = form.get("is_error_report") == "on"
     
-    create_report(
+    new_report = create_report(
         name=form.get("name"),
         tenant_id=tenant_id,
         template_id=int(form.get("template_id")),
@@ -321,7 +409,18 @@ async def create_report_form(
         created_by=current_user['id'],
         is_error_report=is_error_report,
         error_to_email=form.get("error_to_email") if is_error_report else None,
-        error_cc_email=form.get("error_cc_email") if is_error_report else None
+        error_cc_email=form.get("error_cc_email") if is_error_report else None,
+        timezone=form.get("timezone", "Australia/Sydney")
+    )
+    
+    # Audit log
+    add_audit_log(
+        action='create',
+        target_type='report',
+        target_id=str(new_report['id']),
+        details=f"Created report '{new_report['name']}' for tenant '{tenant['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
     )
     
     return RedirectResponse(url="/reports", status_code=302)
@@ -371,10 +470,22 @@ async def update_report_form(
         'sort_order': form.get("sort_order", "task_due_date"),
         'is_error_report': is_error_report,
         'error_to_email': form.get("error_to_email") if is_error_report else None,
-        'error_cc_email': form.get("error_cc_email") if is_error_report else None
+        'error_cc_email': form.get("error_cc_email") if is_error_report else None,
+        'timezone': form.get("timezone", "Australia/Sydney")
     }
     
     update_report(report_id, updates)
+    
+    # Audit log
+    add_audit_log(
+        action='update',
+        target_type='report',
+        target_id=str(report_id),
+        details=f"Updated report '{report['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
+    )
+    
     return RedirectResponse(url="/reports", status_code=302)
 
 
@@ -389,6 +500,16 @@ async def delete_report_form(
         if not has_tenant_access(current_user, report['tenant_id']):
             raise HTTPException(status_code=403, detail="Access denied")
         delete_report(report_id)
+        
+        # Audit log
+        add_audit_log(
+            action='delete',
+            target_type='report',
+            target_id=str(report_id),
+            details=f"Deleted report '{report['name']}'",
+            user_id=current_user.get('id'),
+            username=current_user.get('username')
+        )
     return RedirectResponse(url="/reports", status_code=302)
 
 

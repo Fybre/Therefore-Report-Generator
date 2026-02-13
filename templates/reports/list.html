@@ -55,9 +55,14 @@
                                 {% endif %}
                             {% endfor %}
                         </td>
-                        <td><code>{{ report.cron_schedule }}</code></td>
                         <td>
-                            {% if report.next_run %}
+                            <code>{{ report.cron_schedule }}</code>
+                            <br><small class="text-muted">{{ report.timezone or 'Australia/Sydney' }}</small>
+                        </td>
+                        <td>
+                            {% if report._next_run_formatted and report._next_run_formatted != '-' %}
+                            {{ report._next_run_formatted }}
+                            {% elif report.next_run %}
                             {{ (report.next_run[:16] | replace('T', ' ')) if report.next_run is string else report.next_run.strftime('%Y-%m-%d %H:%M') }}
                             {% else %}
                             <span class="text-muted">-</span>

@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from fastapi import HTTPException
+from zoneinfo import ZoneInfo
 
 from app.config import DATA_DIR
 
@@ -280,18 +281,28 @@ def create_report(name: str, tenant_id: int, template_id: int, cron_schedule: st
                   enabled: bool = True, send_all_to_admin: bool = False,
                   admin_email: str = None, sort_order: str = "task_due_date",
                   created_by: int = None, is_error_report: bool = False,
-                  error_to_email: str = None, error_cc_email: str = None) -> Dict:
+                  error_to_email: str = None, error_cc_email: str = None,
+                  timezone: str = None) -> Dict:
     """Create a new report."""
     reports = get_reports()
 
     report_id = max([r.get('id', 0) for r in reports], default=0) + 1
 
-    # Calculate next run
+    # Default timezone for existing reports (AEDT)
+    if not timezone:
+        timezone = "Australia/Sydney"
+
+    # Calculate next run using the report's timezone
     from croniter import croniter
     try:
-        itr = croniter(cron_schedule, datetime.now())
-        next_run = itr.get_next(datetime).isoformat()
-    except:
+        tz = ZoneInfo(timezone)
+        now_local = datetime.now(tz)
+        itr = croniter(cron_schedule, now_local)
+        next_run_local = itr.get_next(datetime)
+        # Convert to UTC for storage
+        next_run_utc = next_run_local.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+        next_run = next_run_utc.isoformat()
+    except Exception:
         next_run = None
 
     report = {
@@ -302,6 +313,7 @@ def create_report(name: str, tenant_id: int, template_id: int, cron_schedule: st
         'template_id': template_id,
         'workflow_processes': workflow_processes or [],
         'cron_schedule': cron_schedule,
+        'timezone': timezone,
         'enabled': enabled,
         'send_all_to_admin': send_all_to_admin,
         'admin_email': admin_email,
@@ -330,13 +342,21 @@ def update_report(report_id: int, updates: Dict) -> Optional[Dict]:
         if report.get('id') == report_id:
             updates.pop('id', None)
             
-            # Recalculate next_run if cron changed
-            if 'cron_schedule' in updates:
+            # Recalculate next_run if cron or timezone changed
+            if 'cron_schedule' in updates or 'timezone' in updates:
                 from croniter import croniter
                 try:
-                    itr = croniter(updates['cron_schedule'], datetime.now())
-                    updates['next_run'] = itr.get_next(datetime).isoformat()
-                except:
+                    # Use updated timezone if provided, else existing
+                    timezone = updates.get('timezone', report.get('timezone', 'Australia/Sydney'))
+                    cron = updates.get('cron_schedule', report.get('cron_schedule', '0 8 * * *'))
+                    tz = ZoneInfo(timezone)
+                    now_local = datetime.now(tz)
+                    itr = croniter(cron, now_local)
+                    next_run_local = itr.get_next(datetime)
+                    # Convert to UTC for storage
+                    next_run_utc = next_run_local.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+                    updates['next_run'] = next_run_utc.isoformat()
+                except Exception:
                     updates['next_run'] = None
             
             updates['updated_at'] = datetime.utcnow().isoformat()
@@ -359,7 +379,7 @@ def delete_report(report_id: int) -> bool:
 
 def get_reports_due_now() -> List[Dict]:
     """Get reports that are due to run now."""
-    now = datetime.now()
+    now_utc = datetime.utcnow()
     reports = get_reports()
     due = []
     for report in reports:
@@ -368,14 +388,14 @@ def get_reports_due_now() -> List[Dict]:
         next_run = report.get('next_run')
         if next_run:
             next_run_dt = datetime.fromisoformat(next_run) if isinstance(next_run, str) else next_run
-            if next_run_dt <= now:
+            # Compare UTC times (next_run is stored as UTC)
+            if next_run_dt <= now_utc:
                 due.append(report)
     return due
 
 
 def get_upcoming_reports(limit: int = 10) -> List[Dict]:
     """Get upcoming scheduled reports."""
-    now = datetime.now()
     reports = get_reports()
     upcoming = []
     for report in reports:

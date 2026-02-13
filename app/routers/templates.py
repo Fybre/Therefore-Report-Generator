@@ -4,7 +4,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth import require_master_admin, require_any_user
 from app.store import (
-    get_templates, get_template_by_id, create_template, update_template, delete_template
+    get_templates, get_template_by_id, create_template, update_template, delete_template,
+    add_audit_log
 )
 from app.services.email import create_default_templates
 
@@ -46,7 +47,7 @@ async def get_template_api(
 @router.post("/api/templates")
 async def create_template_api(
     template_data: dict,
-    _current_user: dict = Depends(require_master_admin),
+    current_user: dict = Depends(require_master_admin),
 ):
     """Create a new template (API)."""
     new_template = create_template(
@@ -56,6 +57,16 @@ async def create_template_api(
         body_template=template_data.get("body_template"),
         is_default=template_data.get("is_default", False),
         created_by=current_user['id']
+    )
+    
+    # Audit log
+    add_audit_log(
+        action='create',
+        target_type='template',
+        target_id=str(new_template['id']),
+        details=f"Created email template '{new_template['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
     )
     
     return {
@@ -69,7 +80,7 @@ async def create_template_api(
 async def update_template_api(
     template_id: int,
     template_data: dict,
-    _current_user: dict = Depends(require_master_admin),
+    current_user: dict = Depends(require_master_admin),
 ):
     """Update a template (API)."""
     template = get_template_by_id(template_id)
@@ -77,16 +88,41 @@ async def update_template_api(
         raise HTTPException(status_code=404, detail="Template not found")
     
     update_template(template_id, template_data)
+    
+    # Audit log
+    change_details = [f"{k}='{v}'" for k, v in template_data.items() if k not in ('updated_at', 'body_template')]
+    add_audit_log(
+        action='update',
+        target_type='template',
+        target_id=str(template_id),
+        details=f"Updated email template '{template['name']}': {', '.join(change_details)}" if change_details else f"Updated email template '{template['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
+    )
+    
     return {"message": "Template updated successfully"}
 
 
 @router.delete("/api/templates/{template_id}")
 async def delete_template_api(
     template_id: int,
-    _current_user: dict = Depends(require_master_admin),
+    current_user: dict = Depends(require_master_admin),
 ):
     """Delete a template (API)."""
+    template = get_template_by_id(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
     if delete_template(template_id):
+        # Audit log
+        add_audit_log(
+            action='delete',
+            target_type='template',
+            target_id=str(template_id),
+            details=f"Deleted email template '{template['name']}'",
+            user_id=current_user.get('id'),
+            username=current_user.get('username')
+        )
         return {"message": "Template deleted successfully"}
     raise HTTPException(status_code=404, detail="Template not found")
 
@@ -254,18 +290,28 @@ async def reset_default_templates(
 @router.post("", response_class=HTMLResponse)
 async def create_template_form(
     request: Request,
-    _current_user: dict = Depends(require_master_admin),
+    current_user: dict = Depends(require_master_admin),
 ):
     """Create template from form."""
     form = await request.form()
     
-    create_template(
+    new_template = create_template(
         name=form.get("name"),
         description=form.get("description"),
         subject_template=form.get("subject_template"),
         body_template=form.get("body_template"),
         is_default=form.get("is_default") == "on",
         created_by=current_user['id']
+    )
+    
+    # Audit log
+    add_audit_log(
+        action='create',
+        target_type='template',
+        target_id=str(new_template['id']),
+        details=f"Created email template '{new_template['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
     )
     
     return RedirectResponse(url="/templates", status_code=302)
@@ -275,7 +321,7 @@ async def create_template_form(
 async def update_template_form(
     template_id: int,
     request: Request,
-    _current_user: dict = Depends(require_master_admin),
+    current_user: dict = Depends(require_master_admin),
 ):
     """Update template from form."""
     template = get_template_by_id(template_id)
@@ -293,14 +339,37 @@ async def update_template_form(
     }
     
     update_template(template_id, updates)
+    
+    # Audit log
+    add_audit_log(
+        action='update',
+        target_type='template',
+        target_id=str(template_id),
+        details=f"Updated email template '{template['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
+    )
+    
     return RedirectResponse(url="/templates", status_code=302)
 
 
 @router.post("/{template_id}/delete", response_class=HTMLResponse)
 async def delete_template_form(
     template_id: int,
-    _current_user: dict = Depends(require_master_admin),
+    current_user: dict = Depends(require_master_admin),
 ):
     """Delete template from form."""
-    delete_template(template_id)
+    template = get_template_by_id(template_id)
+    if template:
+        delete_template(template_id)
+        
+        # Audit log
+        add_audit_log(
+            action='delete',
+            target_type='template',
+            target_id=str(template_id),
+            details=f"Deleted email template '{template['name']}'",
+            user_id=current_user.get('id'),
+            username=current_user.get('username')
+        )
     return RedirectResponse(url="/templates", status_code=302)

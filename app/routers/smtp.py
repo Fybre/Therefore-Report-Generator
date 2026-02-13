@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from app.auth import require_master_admin, require_any_user
 from app.store import (
     get_smtp_configs, get_smtp_config_by_id, create_smtp_config, 
-    update_smtp_config, delete_smtp_config
+    update_smtp_config, delete_smtp_config, add_audit_log
 )
 from app.services.email import EmailService, EmailMessage
 
@@ -68,6 +68,16 @@ async def create_smtp_api(
         is_active=config_data.get("is_active", True)
     )
     
+    # Audit log
+    add_audit_log(
+        action='create',
+        target_type='smtp',
+        target_id=str(new_config['id']),
+        details=f"Created SMTP config '{new_config['name']}' ({new_config['server']}:{new_config['port']})",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
+    )
+    
     return {
         "id": new_config['id'],
         "name": new_config['name'],
@@ -87,6 +97,18 @@ async def update_smtp_api(
         raise HTTPException(status_code=404, detail="SMTP config not found")
     
     update_smtp_config(config_id, config_data)
+    
+    # Audit log
+    change_details = [f"{k}='{v}'" for k, v in config_data.items() if k not in ('updated_at', 'password')]
+    add_audit_log(
+        action='update',
+        target_type='smtp',
+        target_id=str(config_id),
+        details=f"Updated SMTP config '{config['name']}': {', '.join(change_details)}" if change_details else f"Updated SMTP config '{config['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
+    )
+    
     return {"message": "SMTP config updated successfully"}
 
 
@@ -96,7 +118,20 @@ async def delete_smtp_api(
     current_user: dict = Depends(require_master_admin),
 ):
     """Delete an SMTP config (API)."""
+    config = get_smtp_config_by_id(config_id)
+    if not config:
+        raise HTTPException(status_code=404, detail="SMTP config not found")
+    
     if delete_smtp_config(config_id):
+        # Audit log
+        add_audit_log(
+            action='delete',
+            target_type='smtp',
+            target_id=str(config_id),
+            details=f"Deleted SMTP config '{config['name']}' ({config['server']}:{config['port']})",
+            user_id=current_user.get('id'),
+            username=current_user.get('username')
+        )
         return {"message": "SMTP config deleted successfully"}
     raise HTTPException(status_code=404, detail="SMTP config not found")
 
@@ -384,7 +419,7 @@ async def create_smtp_form(
     """Create SMTP config from form."""
     form = await request.form()
     
-    create_smtp_config(
+    new_config = create_smtp_config(
         name=form.get("name"),
         server=form.get("server"),
         port=int(form.get("port", 587)),
@@ -395,6 +430,16 @@ async def create_smtp_form(
         use_tls=form.get("use_tls") == "on",
         is_default=form.get("is_default") == "on",
         is_active=form.get("is_active") == "on"
+    )
+    
+    # Audit log
+    add_audit_log(
+        action='create',
+        target_type='smtp',
+        target_id=str(new_config['id']),
+        details=f"Created SMTP config '{new_config['name']}' ({new_config['server']}:{new_config['port']})",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
     )
     
     return RedirectResponse(url="/smtp", status_code=302)
@@ -429,6 +474,17 @@ async def update_smtp_form(
         updates['password'] = form.get("password")
     
     update_smtp_config(config_id, updates)
+    
+    # Audit log
+    add_audit_log(
+        action='update',
+        target_type='smtp',
+        target_id=str(config_id),
+        details=f"Updated SMTP config '{config['name']}'",
+        user_id=current_user.get('id'),
+        username=current_user.get('username')
+    )
+    
     return RedirectResponse(url="/smtp", status_code=302)
 
 
@@ -438,5 +494,17 @@ async def delete_smtp_form(
     current_user: dict = Depends(require_master_admin),
 ):
     """Delete SMTP config from form."""
-    delete_smtp_config(config_id)
+    config = get_smtp_config_by_id(config_id)
+    if config:
+        delete_smtp_config(config_id)
+        
+        # Audit log
+        add_audit_log(
+            action='delete',
+            target_type='smtp',
+            target_id=str(config_id),
+            details=f"Deleted SMTP config '{config['name']}' ({config['server']}:{config['port']})",
+            user_id=current_user.get('id'),
+            username=current_user.get('username')
+        )
     return RedirectResponse(url="/smtp", status_code=302)

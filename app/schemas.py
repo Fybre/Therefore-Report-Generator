@@ -80,6 +80,7 @@ class ReportCreate(ReportBase):
     is_error_report: bool = False
     error_to_email: Optional[str] = None
     error_cc_email: Optional[str] = None
+    timezone: Optional[str] = Field(default="Australia/Sydney", max_length=50)
 
 
 class SMTPConfigCreate(SMTPConfigBase):
@@ -128,6 +129,7 @@ class ReportUpdate(BaseModel):
     is_error_report: Optional[bool] = None
     error_to_email: Optional[str] = None
     error_cc_email: Optional[str] = None
+    timezone: Optional[str] = Field(None, max_length=50)
 
 
 class SMTPConfigUpdate(BaseModel):

@@ -2,6 +2,7 @@
 from datetime import datetime
 from typing import List, Dict, Optional, Callable, Any
 from collections import defaultdict
+from zoneinfo import ZoneInfo
 
 from app.store import (
     get_report_by_id, get_tenant_by_id, get_template_by_id, get_default_smtp_config,
@@ -255,10 +256,18 @@ class ReportProcessor:
         }
         
         try:
-            # Calculate next run from cron schedule
-            itr = croniter(report['cron_schedule'], datetime.now())
-            next_run = itr.get_next(datetime)
-            updates['next_run'] = next_run.isoformat()
+            # Get the report's timezone (default to AEDT for existing reports)
+            timezone = report.get('timezone', 'Australia/Sydney')
+            tz = ZoneInfo(timezone)
+            
+            # Calculate next run from cron schedule using report's timezone
+            now_local = datetime.now(tz)
+            itr = croniter(report['cron_schedule'], now_local)
+            next_run_local = itr.get_next(datetime)
+            
+            # Convert to UTC for storage
+            next_run_utc = next_run_local.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
+            updates['next_run'] = next_run_utc.isoformat()
         except Exception as e:
             self.messages.append(f"Could not calculate next run: {e}")
             updates['next_run'] = None

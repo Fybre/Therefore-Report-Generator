@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from ..auth import require_master_admin
-from ..store import get_users, get_user_by_id, update_user, delete_user, get_tenants, add_audit_log
+from ..store import get_users, get_user_by_id, update_user, delete_user, get_tenants, add_audit_log, get_audit_logs
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -290,3 +290,64 @@ async def admin_reset_password(
         return {"message": f"Password reset successfully for '{user['username']}'"}
     else:
         raise HTTPException(status_code=500, detail="Failed to reset password")
+
+
+@router.get("/audit-logs", response_class=HTMLResponse)
+async def audit_logs_page(
+    request: Request,
+    target_type: str = "",
+    action: str = "",
+    user_id: str = "",
+    current_user: dict = Depends(require_master_admin),
+):
+    """Audit logs view page (master admin only)."""
+    templates = Jinja2Templates(directory="templates")
+    
+    # Parse filters
+    target_type_filter = target_type if target_type and target_type.strip() else None
+    action_filter = action if action and action.strip() else None
+    user_id_int = None
+    if user_id and user_id.strip():
+        try:
+            user_id_int = int(user_id)
+        except ValueError:
+            pass
+    
+    # Get audit logs with filters
+    logs = get_audit_logs(
+        limit=500,
+        target_type=target_type_filter,
+        action=action_filter,
+        user_id=user_id_int
+    )
+    
+    # Get users for filter dropdown
+    users_list = get_users()
+    
+    return templates.TemplateResponse("admin/audit_logs.html", {
+        "request": request,
+        "user": current_user,
+        "logs": logs,
+        "users": users_list,
+        "filter_target_type": target_type_filter,
+        "filter_action": action_filter,
+        "filter_user_id": user_id_int
+    })
+
+
+@router.get("/api/audit-logs")
+async def get_audit_logs_api(
+    target_type: str = None,
+    action: str = None,
+    user_id: int = None,
+    limit: int = 100,
+    current_user: dict = Depends(require_master_admin),
+):
+    """Get audit logs (API) - master admin only."""
+    logs = get_audit_logs(
+        limit=limit,
+        target_type=target_type,
+        action=action,
+        user_id=user_id
+    )
+    return logs

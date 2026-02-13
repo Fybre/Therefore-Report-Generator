@@ -83,6 +83,31 @@
             </div>
 
             <div class="mb-3">
+                <label for="timezone" class="form-label">Timezone *</label>
+                <select class="form-select" id="timezone" name="timezone" required>
+                    <option value="">Select timezone...</option>
+                    <option value="Australia/Sydney" {{ 'selected' if not report or report.timezone == 'Australia/Sydney' else '' }}>Australia/Sydney (AEDT/AEST)</option>
+                    <option value="Australia/Melbourne" {{ 'selected' if report and report.timezone == 'Australia/Melbourne' else '' }}>Australia/Melbourne (AEDT/AEST)</option>
+                    <option value="Australia/Brisbane" {{ 'selected' if report and report.timezone == 'Australia/Brisbane' else '' }}>Australia/Brisbane (AEST)</option>
+                    <option value="Australia/Perth" {{ 'selected' if report and report.timezone == 'Australia/Perth' else '' }}>Australia/Perth (AWST)</option>
+                    <option value="Australia/Adelaide" {{ 'selected' if report and report.timezone == 'Australia/Adelaide' else '' }}>Australia/Adelaide (ACDT/ACST)</option>
+                    <option value="Pacific/Auckland" {{ 'selected' if report and report.timezone == 'Pacific/Auckland' else '' }}>Pacific/Auckland (NZDT/NZST)</option>
+                    <option value="UTC" {{ 'selected' if report and report.timezone == 'UTC' else '' }}>UTC</option>
+                    <option value="America/New_York" {{ 'selected' if report and report.timezone == 'America/New_York' else '' }}>America/New York (ET)</option>
+                    <option value="America/Chicago" {{ 'selected' if report and report.timezone == 'America/Chicago' else '' }}>America/Chicago (CT)</option>
+                    <option value="America/Denver" {{ 'selected' if report and report.timezone == 'America/Denver' else '' }}>America/Denver (MT)</option>
+                    <option value="America/Los_Angeles" {{ 'selected' if report and report.timezone == 'America/Los_Angeles' else '' }}>America/Los Angeles (PT)</option>
+                    <option value="Europe/London" {{ 'selected' if report and report.timezone == 'Europe/London' else '' }}>Europe/London (GMT/BST)</option>
+                    <option value="Europe/Paris" {{ 'selected' if report and report.timezone == 'Europe/Paris' else '' }}>Europe/Paris (CET/CEST)</option>
+                    <option value="Asia/Singapore" {{ 'selected' if report and report.timezone == 'Asia/Singapore' else '' }}>Asia/Singapore (SGT)</option>
+                    <option value="Asia/Tokyo" {{ 'selected' if report and report.timezone == 'Asia/Tokyo' else '' }}>Asia/Tokyo (JST)</option>
+                </select>
+                <div class="form-text">
+                    Schedule times are interpreted in this timezone
+                </div>
+            </div>
+            
+            <div class="mb-3">
                 <label class="form-label">Schedule *</label>
                 
                 <!-- Preset Schedule Dropdown -->
@@ -245,7 +270,12 @@
             <tr>
                 <td class="fw-bold" style="width: 150px;">Last Run:</td>
                 <td>
-                    {% if report.last_run %}
+                    {% if report._last_run_formatted %}
+                    {{ report._last_run_formatted }}
+                    <span class="badge {{ 'bg-success' if report.last_run_status == 'success' else 'bg-danger' if report.last_run_status == 'error' else 'bg-warning' }}">
+                        {{ report.last_run_status or 'Unknown' }}
+                    </span>
+                    {% elif report.last_run %}
                     {{ (report.last_run[:16] | replace('T', ' ')) if report.last_run is string else report.last_run.strftime('%Y-%m-%d %H:%M') }}
                     <span class="badge {{ 'bg-success' if report.last_run_status == 'success' else 'bg-danger' if report.last_run_status == 'error' else 'bg-warning' }}">
                         {{ report.last_run_status or 'Unknown' }}
@@ -294,6 +324,7 @@ function applyPreset() {
 // Update next runs preview
 function updateNextRuns() {
     const cronExpr = document.getElementById('cron_schedule').value;
+    const timezone = document.getElementById('timezone').value;
     const previewDiv = document.getElementById('nextRunsPreview');
     
     if (!cronExpr) {
@@ -301,11 +332,16 @@ function updateNextRuns() {
         return;
     }
     
+    if (!timezone) {
+        previewDiv.innerHTML = '<span class="text-muted">Select a timezone first</span>';
+        return;
+    }
+    
     try {
         // Simple cron parser for preview (supports basic expressions)
-        const nextRuns = calculateNextRuns(cronExpr, 3);
+        const nextRuns = calculateNextRuns(cronExpr, 3, timezone);
         if (nextRuns.length > 0) {
-            previewDiv.innerHTML = '<span class="text-success"><i class="bi bi-calendar-check me-1"></i>Next runs: ' + 
+            previewDiv.innerHTML = '<span class="text-success"><i class="bi bi-calendar-check me-1"></i>Next runs (' + timezone + '): ' + 
                 nextRuns.map(d => d.toLocaleString()).join(', ') + '</span>';
         } else {
             previewDiv.innerHTML = '<span class="text-warning">Unable to calculate next runs</span>';
@@ -316,13 +352,22 @@ function updateNextRuns() {
 }
 
 // Calculate next run times from cron expression
-function calculateNextRuns(cronExpr, count) {
+function calculateNextRuns(cronExpr, count, timezone) {
     const parts = cronExpr.trim().split(/\s+/);
     if (parts.length !== 5) return [];
     
     const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
     const runs = [];
+    
+    // Get current time in the selected timezone
     let current = new Date();
+    if (timezone) {
+        // Convert current time to target timezone
+        const tzDate = new Date(current.toLocaleString('en-US', { timeZone: timezone }));
+        const utcDate = new Date(current.toLocaleString('en-US', { timeZone: 'UTC' }));
+        const offset = tzDate.getTime() - utcDate.getTime();
+        current = new Date(current.getTime() + offset);
+    }
     current.setSeconds(0, 0);
     
     // Parse cron field (supports * , - /)
@@ -363,7 +408,14 @@ function calculateNextRuns(cronExpr, count) {
             matchesField(dom, dayOfMonth) &&
             matchesField(mon, month) &&
             (matchesField(dow, dayOfWeek) || matchesField(cronDow, dayOfWeek))) {
-            runs.push(new Date(current));
+            // Create a properly formatted date string in the target timezone
+            const year = current.getFullYear();
+            const month = String(current.getMonth() + 1).padStart(2, '0');
+            const day = String(current.getDate()).padStart(2, '0');
+            const hours = String(current.getHours()).padStart(2, '0');
+            const minutes = String(current.getMinutes()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}T${hours}:${minutes}:00`;
+            runs.push(new Date(dateStr));
         }
     }
     
@@ -389,7 +441,49 @@ function setInitialPreset() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     setInitialPreset();
+    autoDetectTimezone();
+    
+    // Update preview when timezone changes
+    const timezoneSelect = document.getElementById('timezone');
+    if (timezoneSelect) {
+        timezoneSelect.addEventListener('change', updateNextRuns);
+    }
 });
+
+// Auto-detect user's timezone and select if not already set
+function autoDetectTimezone() {
+    const timezoneSelect = document.getElementById('timezone');
+    // Only auto-detect if no timezone is selected (new report)
+    if (!timezoneSelect.value) {
+        try {
+            const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            // Find matching option
+            for (let i = 0; i < timezoneSelect.options.length; i++) {
+                if (timezoneSelect.options[i].value === userTimezone) {
+                    timezoneSelect.selectedIndex = i;
+                    break;
+                }
+            }
+            // If no exact match but contains common patterns, try to find closest
+            if (!timezoneSelect.value) {
+                if (userTimezone.startsWith('Australia/')) {
+                    timezoneSelect.value = 'Australia/Sydney';
+                } else if (userTimezone.startsWith('Pacific/Auckland') || userTimezone.startsWith('Pacific/')) {
+                    timezoneSelect.value = 'Pacific/Auckland';
+                } else if (userTimezone.startsWith('America/')) {
+                    timezoneSelect.value = 'America/New_York';
+                } else if (userTimezone.startsWith('Europe/')) {
+                    timezoneSelect.value = 'Europe/London';
+                } else if (userTimezone.startsWith('Asia/')) {
+                    timezoneSelect.value = 'Asia/Singapore';
+                }
+            }
+        } catch (e) {
+            // Fallback to Australia/Sydney if detection fails
+            timezoneSelect.value = 'Australia/Sydney';
+        }
+    }
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     const tenantSelect = document.getElementById('tenant_id');
