@@ -146,7 +146,7 @@ function applyDatePreset() {
                         </td>
                         <td>
                             {% if log.message %}
-                                <small class="text-muted" title="{{ log.message }}">
+                                <small class="text-muted truncate-tooltip" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ log.message }}">
                                     {{ log.message[:50] }}{% if log.message|length > 50 %}...{% endif %}
                                 </small>
                             {% else %}
@@ -186,6 +186,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 String(date.getMinutes()).padStart(2, '0');
             el.textContent = formatted;
         }
+    });
+    
+    // Initialize Bootstrap tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
     });
 });
 </script>

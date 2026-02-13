@@ -5,6 +5,8 @@ from typing import Optional
 
 from pydantic_settings import BaseSettings
 
+from app.version import get_version, get_version_with_hash
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
@@ -55,3 +57,13 @@ def get_settings() -> Settings:
         settings.BASE_URL = app_config['base_url']
     
     return settings
+
+
+def get_template_context(**kwargs) -> dict:
+    """Get common template context with app version."""
+    context = {
+        "app_version": get_version(),
+        "app_version_full": get_version_with_hash(),
+    }
+    context.update(kwargs)
+    return context

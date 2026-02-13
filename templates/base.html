@@ -45,6 +45,8 @@
             min-height: calc(100vh - 56px);
             border-right: 1px solid #dee2e6;
             padding-top: 1rem;
+            display: flex;
+            flex-direction: column;
         }
         
         .sidebar .nav-link {
@@ -204,15 +206,15 @@
     
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-2 sidebar d-none d-md-block">
-                <nav class="nav flex-column">
+            <div class="col-md-2 sidebar d-none d-md-block d-flex flex-column">
+                <nav class="nav flex-column flex-grow-1">
                     <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
                         <i class="bi bi-speedometer2"></i>Dashboard
                     </a>
                     <a class="nav-link {% if request.url.path.startswith('/tenants') %}active{% endif %}" href="/tenants">
                         <i class="bi bi-buildings"></i>Tenants
                     </a>
-                    <a class="nav-link {% if request.url.path.startswith('/reports') %}active{% endif %}" href="/reports">
+                    <a class="nav-link {% if request.url.path.startswith('/reports') and not request.url.path.startswith('/reports/logs') %}active{% endif %}" href="/reports">
                         <i class="bi bi-file-text"></i>Reports
                     </a>
                     <a class="nav-link {% if request.url.path == '/reports/logs' %}active{% endif %}" href="/reports/logs" style="padding-left: 2.5rem;">
@@ -222,11 +224,14 @@
                     <a class="nav-link {% if request.url.path.startswith('/templates') %}active{% endif %}" href="/templates">
                         <i class="bi bi-envelope"></i>Email Templates
                     </a>
-                    <a class="nav-link {% if request.url.path.startswith('/admin') %}active{% endif %}" href="/admin/users">
+                    <a class="nav-link {% if request.url.path.startswith('/admin/users') %}active{% endif %}" href="/admin/users">
                         <i class="bi bi-people"></i>User Admin
                     </a>
                     <a class="nav-link {% if request.url.path.startswith('/smtp') %}active{% endif %}" href="/smtp">
                         <i class="bi bi-gear"></i>SMTP Settings
+                    </a>
+                    <a class="nav-link {% if request.url.path == '/admin/audit-logs' %}active{% endif %}" href="/admin/audit-logs">
+                        <i class="bi bi-journal-text"></i>Audit Logs
                     </a>
                     {% endif %}
                     <hr class="sidebar-divider my-2" style="border-color: rgba(255,255,255,0.1);">
@@ -234,6 +239,9 @@
                         <i class="bi bi-question-circle"></i>Help
                     </a>
                 </nav>
+                <div class="mt-auto pt-2 pb-3 px-3">
+                    <small class="text-muted" style="font-size: 0.7rem; opacity: 0.6;">v{{ request.app.state.app_version }}</small>
+                </div>
             </div>
             
             <div class="col-md-10 main-content">
