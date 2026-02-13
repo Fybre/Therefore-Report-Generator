@@ -359,7 +359,7 @@ def delete_report(report_id: int) -> bool:
 
 def get_reports_due_now() -> List[Dict]:
     """Get reports that are due to run now."""
-    now = datetime.utcnow()
+    now = datetime.now()
     reports = get_reports()
     due = []
     for report in reports:
@@ -375,7 +375,7 @@ def get_reports_due_now() -> List[Dict]:
 
 def get_upcoming_reports(limit: int = 10) -> List[Dict]:
     """Get upcoming scheduled reports."""
-    now = datetime.utcnow()
+    now = datetime.now()
     reports = get_reports()
     upcoming = []
     for report in reports:
