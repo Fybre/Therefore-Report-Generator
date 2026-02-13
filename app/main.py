@@ -7,9 +7,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from app.config import get_settings, BASE_DIR
-from app.version import get_version as get_app_version
 from app.store import init_store, get_users
 from app.scheduler import start_scheduler, stop_scheduler
+
+# Application version - update manually when releasing
+APP_VERSION = "1.0.0"
 
 # Import routers
 from app.routers import auth, dashboard, tenants, reports, templates as templates_router, smtp, admin, setup, help as help_router
@@ -44,23 +46,16 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     settings = get_settings()
-    app_version = get_app_version()
     
     app = FastAPI(
         title=settings.APP_NAME,
         description="Bulk workflow report generator for Therefore",
-        version=app_version,
+        version=APP_VERSION,
         lifespan=lifespan
     )
     
     # Store version in app state for templates
-    app.state.app_version = app_version
-    
-    # Middleware to inject version into request state for templates
-    @app.middleware("http")
-    async def version_middleware(request: Request, call_next):
-        request.state.app_version = app.state.app_version
-        return await call_next(request)
+    app.state.app_version = APP_VERSION
     
     # CORS middleware
     app.add_middleware(
