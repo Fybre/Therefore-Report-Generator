@@ -11,7 +11,7 @@ from app.store import init_store, get_users
 from app.scheduler import start_scheduler, stop_scheduler
 
 # Application version - update manually when releasing
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 # Import routers
 from app.routers import auth, dashboard, tenants, reports, templates as templates_router, smtp, admin, setup, help as help_router
