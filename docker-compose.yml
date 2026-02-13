@@ -2,7 +2,11 @@ version: '3.8'
 
 services:
   therefore-report-generator:
-    build: .
+    build:
+      context: .
+      args:
+        - APP_BUILD_NUMBER=${APP_BUILD_NUMBER:-0}
+        - APP_COMMIT_HASH=${APP_COMMIT_HASH:-docker}
     image: therefore-report-generator:latest
     container_name: therefore-report-generator
     restart: unless-stopped
