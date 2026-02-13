@@ -196,7 +196,7 @@
                         <div class="col-md-6 mb-3">
                             <label for="error_to_email" class="form-label">To *</label>
                             <input type="email" class="form-control" id="error_to_email" name="error_to_email" 
-                                   value="{{ report.error_to_email if report else '' }}"
+                                   value="{{ report.error_to_email if report and report.error_to_email and report.error_to_email != 'None' else '' }}"
                                    placeholder="admin@company.com">
                             <div class="form-text">Primary recipient for error reports</div>
                         </div>
@@ -609,13 +609,21 @@ function toggleErrorReportFields() {
     const isErrorReport = document.getElementById('is_error_report').checked;
     const errorFields = document.getElementById('errorReportFields');
     const standardOptions = document.getElementById('standardReportOptions');
+    const errorToEmail = document.getElementById('error_to_email');
+    const errorCcEmail = document.getElementById('error_cc_email');
     
     if (isErrorReport) {
         errorFields.style.display = 'block';
         standardOptions.style.display = 'none';
+        // Enable the fields
+        if (errorToEmail) errorToEmail.disabled = false;
+        if (errorCcEmail) errorCcEmail.disabled = false;
     } else {
         errorFields.style.display = 'none';
         standardOptions.style.display = 'block';
+        // Disable the fields so they don't get validated
+        if (errorToEmail) errorToEmail.disabled = true;
+        if (errorCcEmail) errorCcEmail.disabled = true;
     }
 }
 
